@@ -611,12 +611,21 @@
           body: JSON.stringify({
             message,
             card: currentCard
-              ? { title: currentCard.title, subtitle: currentCard.subtitle, tags: currentCard.tags, conclusion: currentCard.conclusion }
+              ? { id: currentCard.id, title: currentCard.title, subtitle: currentCard.subtitle, tags: currentCard.tags, conclusion: currentCard.conclusion }
               : null,
           }),
         });
 
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          const raw = await res.text().catch(() => '(読み取り不可)');
+          botBubble.classList.remove('streaming');
+          botBubble.textContent = `⚠️ サーバーエラー (${res.status}): ${raw.slice(0, 200)}`;
+          btn.disabled = false;
+          return;
+        }
 
         if (!res.ok || data.error) {
           botBubble.classList.remove('streaming');
