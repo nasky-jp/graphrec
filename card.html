@@ -17,6 +17,8 @@
       --term-border: #0066cc;
       --conclusion-bg: #fffbea;
       --conclusion-border: #f0c040;
+      --chat-user-bg: #0066cc;
+      --chat-bot-bg: #f5f5f5;
     }
     [data-theme="dark"] {
       --bg: #121212;
@@ -30,6 +32,8 @@
       --term-border: #4da6ff;
       --conclusion-bg: #2a2518;
       --conclusion-border: #c9a227;
+      --chat-user-bg: #1a4a8a;
+      --chat-bot-bg: #1e1e1e;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -39,7 +43,7 @@
       line-height: 1.7;
       transition: background 0.2s, color 0.2s;
     }
-    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 40px; }
 
     /* 戻るリンク */
     .back-link {
@@ -81,7 +85,7 @@
       border-left: 4px solid var(--term-border);
       border-radius: 0 8px 8px 0;
       padding: 14px 16px;
-      margin: 20px 0;
+      margin: 16px 0;
     }
     .term-label {
       font-size: 0.78rem;
@@ -134,24 +138,9 @@
       margin-bottom: 10px;
     }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem;
-      min-width: 400px;
-    }
-    th {
-      background: var(--accent);
-      color: #fff;
-      padding: 10px 12px;
-      text-align: left;
-      font-weight: 600;
-    }
-    td {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--border);
-      color: var(--text);
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 400px; }
+    th { background: var(--accent); color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
     tr:nth-child(even) td { background: var(--surface); }
     tr:last-child td { border-bottom: none; }
 
@@ -163,14 +152,8 @@
       padding: 16px;
       margin: 24px 0;
     }
-    .conclusion-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-      font-size: 1rem;
-    }
+    .conclusion-title { font-weight: 700; margin-bottom: 8px; font-size: 1rem; }
     .conclusion p { font-size: 0.9rem; }
-
-    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 
     /* 背景サマリー */
     .context-summary {
@@ -188,29 +171,98 @@
       letter-spacing: 0.05em;
       margin-bottom: 10px;
     }
-    .context-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (max-width: 480px) { .context-grid { grid-template-columns: 1fr; } }
+    .context-item { background: var(--bg); border-radius: 6px; padding: 8px 10px; }
+    .context-item-label { font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+    .context-item-value { font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* チャットUI */
+    .chat-section {
+      margin-top: 32px;
+      border-top: 2px solid var(--accent);
+      padding-top: 20px;
+    }
+    .chat-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
       gap: 8px;
     }
-    @media (max-width: 480px) {
-      .context-grid { grid-template-columns: 1fr; }
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      min-height: 0;
     }
-    .context-item {
-      background: var(--bg);
-      border-radius: 6px;
-      padding: 8px 10px;
+    .chat-bubble {
+      max-width: 88%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
-    .context-item-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 3px;
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--chat-user-bg);
+      color: #fff;
+      border-bottom-right-radius: 4px;
     }
-    .context-item-value {
-      font-size: 0.85rem;
+    .chat-bubble.bot {
+      align-self: flex-start;
+      background: var(--chat-bot-bg);
       color: var(--text);
-      line-height: 1.5;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .chat-bubble.bot.streaming::after {
+      content: '▋';
+      animation: blink 0.8s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-send-btn {
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chat-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
     }
 
     /* ダークモードトグル */
@@ -234,7 +286,6 @@
       z-index: 100;
     }
     .toggle-btn:hover { transform: scale(1.04); }
-
     .error { text-align: center; color: var(--text-muted); padding: 60px 0; }
   </style>
 </head>
@@ -250,7 +301,7 @@
   </button>
 
   <script>
-    // ダークモード初期化
+    // ── ダークモード ──────────────────────────────────
     const root = document.documentElement;
     if (localStorage.getItem('graphrec-theme') === 'dark') {
       root.setAttribute('data-theme', 'dark');
@@ -259,33 +310,35 @@
     }
     function toggleTheme() {
       const isDark = root.getAttribute('data-theme') === 'dark';
-      root.setAttribute('data-theme', isDark ? '' : 'dark');
-      if (!isDark) {
-        root.setAttribute('data-theme', 'dark');
-        document.getElementById('themeIcon').textContent = '☀️';
-        document.getElementById('themeLabel').textContent = 'ライト';
-        localStorage.setItem('graphrec-theme', 'dark');
-      } else {
+      if (isDark) {
         root.removeAttribute('data-theme');
         document.getElementById('themeIcon').textContent = '🌙';
         document.getElementById('themeLabel').textContent = 'ダーク';
         localStorage.setItem('graphrec-theme', 'light');
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeLabel').textContent = 'ライト';
+        localStorage.setItem('graphrec-theme', 'dark');
       }
     }
 
-    // URLパラメータからID取得
-    const id = new URLSearchParams(location.search).get('id');
-    if (!id) {
+    // ── カード読み込み ─────────────────────────────────
+    const cardId = new URLSearchParams(location.search).get('id');
+    let currentCard = null;
+
+    if (!cardId) {
       document.getElementById('content').innerHTML = '<div class="error">カードIDが指定されていません</div>';
     } else {
       fetch('cards.json')
         .then(r => r.json())
         .then(data => {
-          const card = data.cards.find(c => c.id === id);
+          const card = data.cards.find(c => c.id === cardId);
           if (!card) {
             document.getElementById('content').innerHTML = '<div class="error">カードが見つかりません</div>';
             return;
           }
+          currentCard = card;
           document.title = `${card.title} — Tech Cards`;
           renderCard(card);
         })
@@ -294,6 +347,44 @@
         });
     }
 
+    // ── 用語解説：初出テキストマッチ ──────────────────
+    // セクションのテキスト（body + bullets）を走査し、
+    // 用語が初めて登場するセクションの直前に解説ボックスを挿入する
+    function assignTermsToSections(sections, terms) {
+      if (!terms?.length) return sections.map(s => ({ ...s, insertTerms: [] }));
+
+      const assigned = sections.map(s => ({ ...s, insertTerms: [] }));
+      const usedTerms = new Set();
+
+      assigned.forEach(sec => {
+        const text = [
+          sec.title || '',
+          sec.body || '',
+          ...(sec.bullets || []),
+          sec.analogy || '',
+        ].join(' ').toLowerCase();
+
+        terms.forEach(term => {
+          if (usedTerms.has(term.word)) return;
+          if (text.includes(term.word.toLowerCase())) {
+            sec.insertTerms.push(term);
+            usedTerms.add(term.word);
+          }
+        });
+      });
+
+      return assigned;
+    }
+
+    function termBoxHtml(term) {
+      return `
+        <div class="term-box">
+          <div class="term-label">📖 用語解説：<strong>${term.word}</strong></div>
+          <p>${term.desc}</p>
+        </div>`;
+    }
+
+    // ── カードレンダリング ─────────────────────────────
     function renderCard(c) {
       let html = '';
 
@@ -304,27 +395,17 @@
           ${c.subtitle ? `<div class="page-subtitle">${c.subtitle}</div>` : ''}
           <div class="meta">
             <span class="meta-date">${c.date}</span>
-            <div class="tags">${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+            <div class="tags">${(c.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
           </div>
-        </header>
-      `;
+        </header>`;
 
-      // 用語解説ボックス
-      if (c.terms?.length) {
-        c.terms.forEach(term => {
-          html += `
-            <div class="term-box">
-              <div class="term-label">📖 用語解説：<strong>${term.word}</strong></div>
-              <p>${term.desc}</p>
-            </div>
-          `;
-        });
-      }
+      // セクション（用語解説を初出位置に挿入）
+      const sectionsWithTerms = assignTermsToSections(c.sections || [], c.terms || []);
 
-      html += '<hr class="divider">';
+      sectionsWithTerms.forEach(sec => {
+        // このセクションに紐づく用語解説を先に出す
+        sec.insertTerms.forEach(term => { html += termBoxHtml(term); });
 
-      // セクション
-      c.sections?.forEach(sec => {
         html += `
           <div class="section">
             <div class="section-heading">
@@ -336,8 +417,13 @@
               ${sec.bullets?.length ? `<ul>${sec.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
               ${sec.analogy ? `<div class="analogy">${sec.analogy}</div>` : ''}
             </div>
-          </div>
-        `;
+          </div>`;
+      });
+
+      // どのセクションにも出てこなかった用語は末尾にまとめて表示
+      const usedWords = new Set(sectionsWithTerms.flatMap(s => s.insertTerms.map(t => t.word)));
+      (c.terms || []).filter(t => !usedWords.has(t.word)).forEach(term => {
+        html += termBoxHtml(term);
       });
 
       // 比較表
@@ -352,8 +438,7 @@
                 <tbody>${c.table.rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
               </table>
             </div>
-          </div>
-        `;
+          </div>`;
       }
 
       // 結論
@@ -362,11 +447,10 @@
           <div class="conclusion">
             <div class="conclusion-title">💡 選び方の結論</div>
             <p>${c.conclusion}</p>
-          </div>
-        `;
+          </div>`;
       }
 
-      // 背景サマリー（インタビューで収集した情報）
+      // 背景サマリー
       const cs = c.context_summary;
       if (cs && (cs.context || cs.current || cs.confusion || cs.goal)) {
         html += `
@@ -374,16 +458,96 @@
           <div class="context-summary">
             <div class="context-summary-title">📋 このカードが生まれた背景</div>
             <div class="context-grid">
-              ${cs.context ? `<div class="context-item"><div class="context-item-label">🗂 文脈</div><div class="context-item-value">${cs.context}</div></div>` : ''}
-              ${cs.current ? `<div class="context-item"><div class="context-item-label">📍 現在地</div><div class="context-item-value">${cs.current}</div></div>` : ''}
-              ${cs.confusion ? `<div class="context-item"><div class="context-item-label">🔴 詰まり</div><div class="context-item-value">${cs.confusion}</div></div>` : ''}
-              ${cs.goal ? `<div class="context-item"><div class="context-item-label">🎯 ゴール</div><div class="context-item-value">${cs.goal}</div></div>` : ''}
+              ${cs.context  ? `<div class="context-item"><div class="context-item-label">🗂 文脈</div><div class="context-item-value">${cs.context}</div></div>`  : ''}
+              ${cs.current  ? `<div class="context-item"><div class="context-item-label">📍 現在地</div><div class="context-item-value">${cs.current}</div></div>`  : ''}
+              ${cs.confusion? `<div class="context-item"><div class="context-item-label">🔴 詰まり</div><div class="context-item-value">${cs.confusion}</div></div>`: ''}
+              ${cs.goal     ? `<div class="context-item"><div class="context-item-label">🎯 ゴール</div><div class="context-item-value">${cs.goal}</div></div>`     : ''}
             </div>
-          </div>
-        `;
+          </div>`;
       }
 
+      // チャットUI
+      html += `
+        <div class="chat-section">
+          <div class="chat-title">💬 このカードについて深掘りする</div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" placeholder="質問や気になる点を入力…" rows="1"
+              onkeydown="handleChatKey(event)"></textarea>
+            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">送信</button>
+          </div>
+          <div class="chat-hint">Enter で送信 / Shift+Enter で改行</div>
+        </div>`;
+
       document.getElementById('content').innerHTML = html;
+    }
+
+    // ── チャット ──────────────────────────────────────
+    const chatHistory = [];
+
+    function handleChatKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChat();
+      }
+    }
+
+    function appendBubble(role, text) {
+      const el = document.createElement('div');
+      el.className = `chat-bubble ${role}`;
+      el.textContent = text;
+      document.getElementById('chatMessages').appendChild(el);
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return el;
+    }
+
+    async function sendChat() {
+      const input = document.getElementById('chatInput');
+      const btn = document.getElementById('chatSendBtn');
+      const message = input.value.trim();
+      if (!message || btn.disabled) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      btn.disabled = true;
+
+      appendBubble('user', message);
+      chatHistory.push({ role: 'user', content: message });
+
+      const botBubble = appendBubble('bot', '');
+      botBubble.classList.add('streaming');
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            card: currentCard
+              ? { title: currentCard.title, subtitle: currentCard.subtitle, tags: currentCard.tags, conclusion: currentCard.conclusion }
+              : null,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          botBubble.classList.remove('streaming');
+          botBubble.textContent = `⚠️ ${data.error || 'エラーが発生しました'}`;
+          btn.disabled = false;
+          return;
+        }
+
+        botBubble.classList.remove('streaming');
+        botBubble.textContent = data.reply;
+        chatHistory.push({ role: 'assistant', content: data.reply });
+      } catch (err) {
+        botBubble.classList.remove('streaming');
+        botBubble.textContent = `⚠️ 通信エラー: ${err.message}`;
+      }
+
+      btn.disabled = false;
+      input.focus();
     }
   </script>
 </body>
