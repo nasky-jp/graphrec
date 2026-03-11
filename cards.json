@@ -1,4 +1,11 @@
 {
+  "tag_groups": {
+    "ツール・環境": ["Claude Code", "CLI", "Vimium", "Chromium", "Electron", "Tauri"],
+    "開発・設計": ["フロントエンド", "フレームワーク", "設計", "JSON駆動", "クロスプラットフォーム"],
+    "効率化・管理": ["開発効率化", "コマンド管理", "ナレッジ管理", "キーボード操作"],
+    "サービス・基盤": ["Vercel", "Discord Bot"],
+    "その他": ["拡張機能", "デスクトップアプリ", "比較"]
+  },
   "cards": [
     {
       "id": "snippet-alias-catalog-command",

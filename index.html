@@ -121,7 +121,34 @@
       font-weight: 600;
       white-space: nowrap;
     }
-    .tag-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-filters { display: flex; flex-direction: column; gap: 8px; }
+    .tag-group { }
+    .tag-group-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      padding: 2px 0;
+      letter-spacing: 0.03em;
+    }
+    .tag-group-header:hover { color: var(--accent); }
+    .tag-group-arrow {
+      font-size: 0.65rem;
+      transition: transform 0.15s;
+      display: inline-block;
+    }
+    .tag-group.collapsed .tag-group-arrow { transform: rotate(-90deg); }
+    .tag-group-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .tag-group.collapsed .tag-group-body { display: none; }
     .tag-btn {
       padding: 4px 12px;
       border-radius: 12px;
@@ -260,6 +287,7 @@
 
   <script>
     let allCards = [];
+    let tagGroups = {};          // グループ定義 { グループ名: [タグ,...] }
     let activeTags = new Set();  // 複数タグAND選択
     let fuse = null;
     let fuseResults = null;  // 検索結果キャッシュ
@@ -288,6 +316,7 @@
     fetch('cards.json')
       .then(r => r.json())
       .then(data => {
+        tagGroups = data.tag_groups || {};
         allCards = data.cards.sort((a, b) => b.date.localeCompare(a.date));
         initFuse(allCards);
         buildMonthFilter();
@@ -313,17 +342,65 @@
     }
 
     function buildTagFilters() {
-      const tags = [...new Set(allCards.flatMap(c => c.tags))];
+      const allTagsInCards = new Set(allCards.flatMap(c => c.tags));
       const container = document.getElementById('tagFilters');
       container.innerHTML = '';
-      tags.forEach(tag => {
-        const btn = document.createElement('button');
-        btn.className = 'tag-btn';
-        btn.textContent = tag;
-        btn.dataset.tag = tag;
-        btn.onclick = () => toggleTag(tag, btn);
-        container.appendChild(btn);
+
+      // グループ化済みタグを収集（cards.jsonに存在するものだけ表示）
+      const groupedTags = new Set();
+      Object.entries(tagGroups).forEach(([groupName, tags]) => {
+        const available = tags.filter(t => allTagsInCards.has(t));
+        if (available.length === 0) return;
+        available.forEach(t => groupedTags.add(t));
+
+        const group = document.createElement('div');
+        group.className = 'tag-group';
+        group.dataset.group = groupName;
+
+        const header = document.createElement('div');
+        header.className = 'tag-group-header';
+        header.innerHTML = `<span class="tag-group-arrow">▼</span>${groupName}`;
+        header.onclick = () => group.classList.toggle('collapsed');
+
+        const body = document.createElement('div');
+        body.className = 'tag-group-body';
+        available.forEach(tag => {
+          const btn = document.createElement('button');
+          btn.className = 'tag-btn';
+          btn.textContent = tag;
+          btn.dataset.tag = tag;
+          btn.onclick = () => toggleTag(tag, btn);
+          body.appendChild(btn);
+        });
+
+        group.appendChild(header);
+        group.appendChild(body);
+        container.appendChild(group);
       });
+
+      // グループ未割り当てのタグを「その他」として追加
+      const ungrouped = [...allTagsInCards].filter(t => !groupedTags.has(t));
+      if (ungrouped.length > 0) {
+        const group = document.createElement('div');
+        group.className = 'tag-group';
+        const header = document.createElement('div');
+        header.className = 'tag-group-header';
+        header.innerHTML = `<span class="tag-group-arrow">▼</span>その他`;
+        header.onclick = () => group.classList.toggle('collapsed');
+        const body = document.createElement('div');
+        body.className = 'tag-group-body';
+        ungrouped.forEach(tag => {
+          const btn = document.createElement('button');
+          btn.className = 'tag-btn';
+          btn.textContent = tag;
+          btn.dataset.tag = tag;
+          btn.onclick = () => toggleTag(tag, btn);
+          body.appendChild(btn);
+        });
+        group.appendChild(header);
+        group.appendChild(body);
+        container.appendChild(group);
+      }
     }
 
     function toggleTag(tag, btn) {
