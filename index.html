@@ -69,6 +69,18 @@
       transition: border-color 0.2s;
     }
     .search-input:focus { border-color: var(--accent); }
+    .month-select {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      width: auto;
+    }
+    .month-select:focus { border-color: var(--accent); }
     .tag-filters { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag-btn {
       padding: 4px 12px;
@@ -161,6 +173,7 @@
 
     <div class="filter-bar">
       <input class="search-input" type="text" id="searchInput" placeholder="🔍 キーワードで検索..." oninput="render()">
+      <select class="month-select" id="monthSelect" onchange="render()"></select>
       <div class="tag-filters" id="tagFilters"></div>
     </div>
 
@@ -181,12 +194,26 @@
       .then(r => r.json())
       .then(data => {
         allCards = data.cards.sort((a, b) => b.date.localeCompare(a.date));
+        buildMonthFilter();
         buildTagFilters();
         render();
       })
       .catch(() => {
         document.getElementById('cardList').innerHTML = '<div class="empty">カードの読み込みに失敗しました</div>';
       });
+
+    function buildMonthFilter() {
+      const months = [...new Set(allCards.map(c => c.date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
+      const select = document.getElementById('monthSelect');
+      select.innerHTML = '<option value="">すべての月</option>';
+      months.forEach(m => {
+        const [year, month] = m.split('-');
+        const option = document.createElement('option');
+        option.value = m;
+        option.textContent = `${year}年${parseInt(month, 10)}月`;
+        select.appendChild(option);
+      });
+    }
 
     function buildTagFilters() {
       const tags = [...new Set(allCards.flatMap(c => c.tags))];
@@ -208,13 +235,15 @@
 
     function render() {
       const q = document.getElementById('searchInput').value.toLowerCase();
+      const selectedMonth = document.getElementById('monthSelect').value;
       const filtered = allCards.filter(c => {
         const matchTag = !activeTag || c.tags.includes(activeTag);
+        const matchMonth = !selectedMonth || c.date.startsWith(selectedMonth);
         const matchSearch = !q ||
           c.title.toLowerCase().includes(q) ||
           c.subtitle?.toLowerCase().includes(q) ||
           c.tags.some(t => t.toLowerCase().includes(q));
-        return matchTag && matchSearch;
+        return matchTag && matchMonth && matchSearch;
       });
 
       document.getElementById('cardCount').textContent = `${filtered.length} / ${allCards.length} カード`;

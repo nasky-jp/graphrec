@@ -333,6 +333,15 @@
     }
     .toggle-btn:hover { transform: scale(1.04); }
     .error { text-align: center; color: var(--text-muted); padding: 60px 0; }
+
+    /* 関連カード */
+    .related-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .related-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; color: var(--text-muted); }
+    .related-list { display: flex; flex-direction: column; gap: 8px; }
+    .related-item { display: block; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; color: var(--text); transition: border-color 0.15s; }
+    .related-item:hover { border-color: var(--accent); }
+    .related-item-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+    .related-item-tags { font-size: 0.75rem; color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -376,10 +385,12 @@
     if (!cardId) {
       document.getElementById('content').innerHTML = '<div class="error">カードIDが指定されていません</div>';
     } else {
+      let allCards = [];
       fetch('cards.json')
         .then(r => r.json())
         .then(data => {
-          const card = data.cards.find(c => c.id === cardId);
+          allCards = data.cards;
+          const card = allCards.find(c => c.id === cardId);
           if (!card) {
             document.getElementById('content').innerHTML = '<div class="error">カードが見つかりません</div>';
             return;
@@ -535,6 +546,26 @@
               ${cs.confusion? `<div class="context-item"><div class="context-item-label">🔴 詰まり</div><div class="context-item-value">${cs.confusion}</div></div>`: ''}
               ${cs.goal     ? `<div class="context-item"><div class="context-item-label">🎯 ゴール</div><div class="context-item-value">${cs.goal}</div></div>`     : ''}
             </div>
+          </div>`;
+      }
+
+      // 関連カード
+      const related = allCards
+        .filter(rc => rc.id !== c.id)
+        .map(rc => ({ ...rc, score: rc.tags.filter(t => c.tags.includes(t)).length }))
+        .filter(rc => rc.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      if (related.length > 0) {
+        const relatedItems = related.map(rc => `
+          <a class="related-item" href="card.html?id=${rc.id}">
+            <div class="related-item-title">${escapeHtml(rc.title)}</div>
+            <div class="related-item-tags">${rc.tags.join(' ')}</div>
+          </a>`).join('');
+        html += `
+          <div class="related-section">
+            <div class="related-title">🔗 関連カード</div>
+            <div class="related-list">${relatedItems}</div>
           </div>`;
       }
 
