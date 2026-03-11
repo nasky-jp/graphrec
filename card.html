@@ -265,6 +265,52 @@
       margin-top: 8px;
     }
 
+    /* Q&A スレッド */
+    .threads-section {
+      margin-top: 32px;
+      border-top: 2px solid var(--border);
+      padding-top: 20px;
+    }
+    .threads-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .thread-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .thread-question {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .thread-question::before { content: "Q "; color: var(--accent); font-weight: 800; }
+    .thread-answer {
+      background: var(--surface);
+      padding: 12px 14px;
+      font-size: 0.875rem;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.7;
+    }
+    .thread-answer::before { content: "A "; color: var(--text-muted); font-weight: 700; }
+    .thread-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 4px 14px 8px;
+      background: var(--surface);
+    }
+
     /* ダークモードトグル */
     .toggle-btn {
       position: fixed;
@@ -345,6 +391,15 @@
         .catch(() => {
           document.getElementById('content').innerHTML = '<div class="error">データの読み込みに失敗しました</div>';
         });
+    }
+
+    // ── ユーティリティ ────────────────────────────────
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     // ── 用語解説：初出直後挿入 ────────────────────────
@@ -480,6 +535,21 @@
               ${cs.confusion? `<div class="context-item"><div class="context-item-label">🔴 詰まり</div><div class="context-item-value">${cs.confusion}</div></div>`: ''}
               ${cs.goal     ? `<div class="context-item"><div class="context-item-label">🎯 ゴール</div><div class="context-item-value">${cs.goal}</div></div>`     : ''}
             </div>
+          </div>`;
+      }
+
+      // Q&A スレッド（過去のやり取り）
+      if (c.threads && c.threads.length > 0) {
+        const threadItems = c.threads.map(t => `
+          <div class="thread-item">
+            <div class="thread-question">${escapeHtml(t.question)}</div>
+            <div class="thread-answer">${escapeHtml(t.answer)}</div>
+            <div class="thread-date">${t.date}</div>
+          </div>`).join('');
+        html += `
+          <div class="threads-section">
+            <div class="threads-title">💬 Q&amp;A（${c.threads.length}件）</div>
+            ${threadItems}
           </div>`;
       }
 

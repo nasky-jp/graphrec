@@ -1,6 +1,86 @@
 {
   "cards": [
     {
+      "id": "graphrec-knowledge-system",
+      "title": "グラレコ型ナレッジベースの設計と構築",
+      "subtitle": "Discord Bot × Vercel × JSON駆動HTML",
+      "tags": ["ナレッジ管理", "Discord Bot", "Vercel", "JSON駆動", "設計"],
+      "date": "2026-03-12",
+      "terms": [
+        {
+          "word": "JSON駆動",
+          "desc": "HTMLやJavaScriptのコードは変更せず、JSONデータを追記するだけでコンテンツを増やせる設計。「本棚のレイアウトを変えず、本だけ追加する」イメージ。"
+        },
+        {
+          "word": "Vercel Functions",
+          "desc": "Vercel上で動くサーバーレス関数。URLにアクセスが来たときだけ起動し、コストゼロで常時待機できる。「呼び出されたときだけ出勤するスタッフ」。"
+        },
+        {
+          "word": "ポーリング",
+          "desc": "「返答来た？まだ？」と一定間隔で繰り返し確認する方式。WebSocketのような常時接続ではなく、定期的に問い合わせる電話確認のイメージ。"
+        }
+      ],
+      "context_summary": {
+        "context": "技術の学びをDiscord上でナレッジカード化し、Webページとして蓄積・参照・深掘りできる仕組みを作りたかった。",
+        "current": "Discordでbotを運用中。Vercel/GitHubも利用可能。Anthropic APIキーの追加課金は避けたい。",
+        "confusion": "チャット機能を付けたいが、APIキーをVercelに置くとコストが増える。Discord経由でClaudeを呼べるのでは？という発想の検証が必要だった。",
+        "goal": "カード閲覧 → チャットで深掘り → Q&Aがカードに蓄積 → ナレッジが育つ循環を作ること。"
+      },
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 「カードが育つ」ナレッジベース",
+          "body": "静的なWikiではなく、チャットのやり取りがそのままカードのQ&Aとして積み上がっていく設計。読むだけでなく問いかけることでコンテンツが充実する。",
+          "bullets": [
+            "cards.jsonにカードデータを蓄積（HTML/JSは変更不要）",
+            "Discord /graphrecコマンドでインタビュー → カード生成 → git push → Vercel自動デプロイ",
+            "card.htmlのチャットがDiscord経由でClaude CLIに中継される（APIキー追加不要）",
+            "チャット後にQ&Aがcards.jsonに追記 → 再デプロイ → スレッドとして表示"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — Discord中継チャットのしくみ",
+          "body": null,
+          "bullets": [
+            "card.html → POST /api/chat（Vercel Functions）→ Discord #graphrec-chatにメッセージ投稿",
+            "bot.pyがon_messageで[WEBCHAT]プレフィックスを検知 → Claude CLIでサブプロセス実行",
+            "Claudeの返答を[REPLY]{sessionId}|{reply}形式でDiscordに投稿",
+            "Vercel FunctionsがDiscordをポーリング（2.5秒×10回）して返答を取得 → card.htmlに返却",
+            "同時にbot.pyがcards.jsonにQ&Aを追記 → git push → Vercel自動デプロイ"
+          ],
+          "analogy": "card.html（客）→ Vercel（フロント）→ Discord（伝票）→ bot.py（厨房）→ Claude CLI（シェフ）→ 逆順で料理が戻る、レストランの注文システム。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 詰まったポイントと解決策",
+          "body": "最大の落とし穴は「botが自分自身のメッセージを無視する」設計。",
+          "bullets": [
+            "【問題】bot.pyのon_message冒頭でif message.author.bot: returnしていたため、Vercel（Bot Token）が送った[WEBCHAT]メッセージを自分で無視していた",
+            "【解決】[WEBCHAT]プレフィックスチェックをbot filterより前に移動",
+            "【問題】Vercel Edge RuntimeではsetTimeout（sleep）が動かず504タイムアウト",
+            "【解決】export const config = { runtime: 'edge' }を削除してNode.js Runtimeに変更",
+            "【問題】Discord #graphrec-chatのBot権限が未設定で403 Missing Access",
+            "【解決】チャンネル権限設定でBotにメッセージ送信・閲覧を許可"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": ["観点", "Discord中継方式（採用）", "Anthropic API直接方式"],
+        "rows": [
+          ["APIキーコスト", "追加不要（既存bot利用）", "Vercelに追加キー必要"],
+          ["レイテンシ", "3〜25秒（ポーリング）", "1〜3秒（直接）"],
+          ["Claude会話履歴", "セッションID管理可", "同上"],
+          ["ローカルファイル操作", "可（bot.pyがgit push）", "不可（サーバーレス）"],
+          ["実装複雑度", "中（Discord中継分）", "低"]
+        ]
+      },
+      "conclusion": "APIキー追加コストなしでClaudeチャットを実現するには、既存のDiscord botをプロキシとして使うアーキテクチャが有効。ポーリングによるレイテンシは許容範囲内（25秒上限）。ローカルファイル操作（git push）が必要な処理もbot.py側に集約できるため、Vercelをフロントエンド配信専用に保てる点が最大の利点。",
+      "threads": []
+    },
+    {
       "id": "vimium-electron-keyboard-navigation",
       "title": "VimiumをElectronアプリに流用できるか？",
       "subtitle": "ブラウザ拡張 vs Electronアプリ内スクリプト",

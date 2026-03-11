@@ -61,11 +61,12 @@ export default async function handler(req, res) {
   if (!message) return res.status(400).json({ error: 'message is required' });
 
   const sessionId = makeSessionId();
+  const cardId = card?.id || '';
   const cardContext = card
     ? `タイトル:${card.title} / タグ:${(card.tags || []).join(',')} / 結論:${(card.conclusion || '').slice(0, 100)}`
     : 'カード情報なし';
 
-  const discordContent = `${WEBCHAT_PREFIX}${sessionId}|${cardContext}|${message}`.slice(0, 1900);
+  const discordContent = `${WEBCHAT_PREFIX}${sessionId}|${cardId}|${cardContext}|${message}`.slice(0, 1900);
 
   let sentMsg;
   try {
