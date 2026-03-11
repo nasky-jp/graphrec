@@ -103,7 +103,15 @@
         ]
       },
       "conclusion": "検索機能開発でClaudeに質問・レビューを繰り返すなら、まずスニペットで「よく使うプロンプト文」を登録するのが最速の一歩。さらにレビュー手順が固まってきたらカタログコマンド化することで、Claudeの動作ごと再利用できるようになる。",
-      "date": "2026-03-12"
+      "date": "2026-03-12",
+      "threads": [
+        {
+          "id": "t_1773257839",
+          "date": "2026-03-12",
+          "question": "/コマンドは、いわゆるskillsのことではないですか？また、claudecodeに限らずより広義な範囲でも教えてください",
+          "answer": "## 結論\n\n「/コマンド」は Skills と重なる概念ですが、厳密には別レイヤーです。\n\n---\n\n## Claude Code における整理\n\n| 名称 | 実体 | 場所 |\n|---|---|---|\n| `/コマンド`（スラッシュコマンド） | Markdown ファイル（プロンプトテンプレート） | `~/.claude/commands/` |\n| Skills | 複数ファイル＋ロジックを持つ再利用可能な手順集 | `~/.claude/skills/` |\n\n- `/commit` と打つと `commands/commit.md` が展開される\n- Skills は「どのツールを使うか」「何をチェックするか」まで定義した**手順書**\n- /コマンドは Skills を**呼び出すトリガー**になることも多い\n\n---\n\n## より広義な範囲での対応概念\n\n| ツール | 相当する概念 |\n|---|---|\n| Bash / Zsh | `alias`（1行） / `function`（複数行） / シェルスクリプト |\n| VSCode | Snippets / Tasks / Extension |\n| Vim / Neovim | `:command` / `<Leader>` マッピング / Lua プラグイン |\n| Make | `make target`（タスクランナー） |\n| Raycast / Alfred | スニペット / ワークフロー |\n\n---\n\n## 本質的な共通パターン\n\n```\n短い入力 → 長い処理を展開・実行\n```\n\nどのツールでも「覚えやすい短縮形」で「複雑な手順」を呼び出す構造は同じ。\n\n---\n\n## カードの文脈で言うと\n\n- **スニペット** ＝ テキスト断片の再利用（Bash alias に近い）\n- **/コマンド・Skills** ＝ 手順・ロジックごと再利用（shell function / Makefile に近い）\n- 「固まってきたらコマンド化」 ＝ alias → function への昇格と同じ発想"
+        }
+      ]
     },
     {
       "id": "graphrec-knowledge-system",
