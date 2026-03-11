@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fishman's Tech Cards</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --text: #1a1a1a;
+      --text-muted: #666666;
+      --accent: #0066cc;
+      --accent-light: #e8f0fb;
+      --border: #dddddd;
+      --card-hover: #f0f6ff;
+    }
+    [data-theme="dark"] {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --text: #e8e8e8;
+      --text-muted: #aaaaaa;
+      --accent: #4da6ff;
+      --accent-light: #1a2a3a;
+      --border: #333333;
+      --card-hover: #1a2535;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      transition: background 0.2s, color 0.2s;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    /* ヘッダー */
+    .site-header {
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .site-title { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+    .site-title span { color: var(--accent); }
+    .card-count { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* 検索・フィルター */
+    .filter-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .tag-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-btn {
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tag-btn.active, .tag-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* カード一覧 */
+    .card-list { display: flex; flex-direction: column; gap: 12px; }
+    .card-item {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-decoration: none;
+      color: var(--text);
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .card-item:hover {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .card-item-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .card-item-title { font-weight: 700; font-size: 1rem; color: var(--text); }
+    .card-item-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .card-item-date { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .card-tag {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      font-weight: 600;
+    }
+
+    /* 空状態 */
+    .empty { text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 0.9rem; }
+
+    /* ダークモードトグル */
+    .toggle-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.1s;
+      z-index: 100;
+    }
+    .toggle-btn:hover { transform: scale(1.04); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div>
+        <div class="site-title">🗺️ Fishman's <span>Tech Cards</span></div>
+      </div>
+      <div class="card-count" id="cardCount">読み込み中...</div>
+    </header>
+
+    <div class="filter-bar">
+      <input class="search-input" type="text" id="searchInput" placeholder="🔍 キーワードで検索..." oninput="render()">
+      <div class="tag-filters" id="tagFilters"></div>
+    </div>
+
+    <div class="card-list" id="cardList"></div>
+  </div>
+
+  <button class="toggle-btn" onclick="toggleTheme()" id="themeBtn">
+    <span id="themeIcon">🌙</span>
+    <span id="themeLabel">ダーク</span>
+  </button>
+
+  <script>
+    let allCards = [];
+    let activeTag = null;
+
+    // cards.json 読み込み
+    fetch('cards.json')
+      .then(r => r.json())
+      .then(data => {
+        allCards = data.cards.sort((a, b) => b.date.localeCompare(a.date));
+        buildTagFilters();
+        render();
+      })
+      .catch(() => {
+        document.getElementById('cardList').innerHTML = '<div class="empty">カードの読み込みに失敗しました</div>';
+      });
+
+    function buildTagFilters() {
+      const tags = [...new Set(allCards.flatMap(c => c.tags))];
+      const container = document.getElementById('tagFilters');
+      container.innerHTML = '';
+      tags.forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn';
+        btn.textContent = tag;
+        btn.onclick = () => {
+          activeTag = activeTag === tag ? null : tag;
+          document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+          if (activeTag) btn.classList.add('active');
+          render();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function render() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allCards.filter(c => {
+        const matchTag = !activeTag || c.tags.includes(activeTag);
+        const matchSearch = !q ||
+          c.title.toLowerCase().includes(q) ||
+          c.subtitle?.toLowerCase().includes(q) ||
+          c.tags.some(t => t.toLowerCase().includes(q));
+        return matchTag && matchSearch;
+      });
+
+      document.getElementById('cardCount').textContent = `${filtered.length} / ${allCards.length} カード`;
+
+      const list = document.getElementById('cardList');
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty">該当するカードがありません</div>';
+        return;
+      }
+      list.innerHTML = filtered.map(c => `
+        <a class="card-item" href="card.html?id=${c.id}">
+          <div class="card-item-header">
+            <div class="card-item-title">🗺️ ${c.title}</div>
+            <div class="card-item-date">${c.date}</div>
+          </div>
+          <div class="card-item-subtitle">${c.subtitle || ''}</div>
+          <div class="card-tags">${c.tags.map(t => `<span class="card-tag">${t}</span>`).join('')}</div>
+        </a>
+      `).join('');
+    }
+
+    // ダークモード
+    const root = document.documentElement;
+    if (localStorage.getItem('graphrec-theme') === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      document.getElementById('themeIcon').textContent = '☀️';
+      document.getElementById('themeLabel').textContent = 'ライト';
+    }
+    function toggleTheme() {
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        root.removeAttribute('data-theme');
+        document.getElementById('themeIcon').textContent = '🌙';
+        document.getElementById('themeLabel').textContent = 'ダーク';
+        localStorage.setItem('graphrec-theme', 'light');
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeLabel').textContent = 'ライト';
+        localStorage.setItem('graphrec-theme', 'dark');
+      }
+    }
+  </script>
+</body>
+</html>

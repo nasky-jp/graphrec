@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tech Card</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --text: #1a1a1a;
+      --text-muted: #555555;
+      --accent: #0066cc;
+      --accent-light: #e8f0fb;
+      --border: #dddddd;
+      --term-bg: #f0f6ff;
+      --term-border: #0066cc;
+      --conclusion-bg: #fffbea;
+      --conclusion-border: #f0c040;
+    }
+    [data-theme="dark"] {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --text: #e8e8e8;
+      --text-muted: #aaaaaa;
+      --accent: #4da6ff;
+      --accent-light: #1a2a3a;
+      --border: #333333;
+      --term-bg: #1a2535;
+      --term-border: #4da6ff;
+      --conclusion-bg: #2a2518;
+      --conclusion-border: #c9a227;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      transition: background 0.2s, color 0.2s;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    /* 戻るリンク */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ヘッダー */
+    .page-header {
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--accent);
+    }
+    .page-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px; }
+    .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .meta-date { font-size: 0.8rem; color: var(--text-muted); }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      font-weight: 600;
+    }
+
+    /* 用語解説ボックス */
+    .term-box {
+      background: var(--term-bg);
+      border-left: 4px solid var(--term-border);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 16px;
+      margin: 20px 0;
+    }
+    .term-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+    .term-box p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* セクション */
+    .section { margin: 24px 0; }
+    .section-heading {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .section-num { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+    .section-body {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .section-body p { margin-bottom: 8px; }
+    .section-body p:last-child { margin-bottom: 0; }
+    .section-body ul { padding-left: 20px; margin-bottom: 8px; }
+    .section-body li { margin-bottom: 5px; color: var(--text); font-size: 0.95rem; }
+    .analogy {
+      font-style: italic;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-left: 3px solid var(--border);
+      padding: 10px 14px;
+      margin-top: 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.875rem;
+    }
+    .analogy::before { content: "💭 比喩："; font-weight: 700; font-style: normal; color: var(--accent); }
+
+    /* 比較表 */
+    .compare-section { margin: 24px 0; }
+    .compare-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      min-width: 400px;
+    }
+    th {
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:nth-child(even) td { background: var(--surface); }
+    tr:last-child td { border-bottom: none; }
+
+    /* 結論 */
+    .conclusion {
+      background: var(--conclusion-bg);
+      border: 2px solid var(--conclusion-border);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 24px 0;
+    }
+    .conclusion-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+    .conclusion p { font-size: 0.9rem; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ダークモードトグル */
+    .toggle-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.1s;
+      z-index: 100;
+    }
+    .toggle-btn:hover { transform: scale(1.04); }
+
+    .error { text-align: center; color: var(--text-muted); padding: 60px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="index.html">← 一覧に戻る</a>
+    <div id="content"><p style="color:var(--text-muted);text-align:center;padding:60px 0">読み込み中...</p></div>
+  </div>
+
+  <button class="toggle-btn" onclick="toggleTheme()">
+    <span id="themeIcon">🌙</span>
+    <span id="themeLabel">ダーク</span>
+  </button>
+
+  <script>
+    // ダークモード初期化
+    const root = document.documentElement;
+    if (localStorage.getItem('graphrec-theme') === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      document.getElementById('themeIcon').textContent = '☀️';
+      document.getElementById('themeLabel').textContent = 'ライト';
+    }
+    function toggleTheme() {
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      root.setAttribute('data-theme', isDark ? '' : 'dark');
+      if (!isDark) {
+        root.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeLabel').textContent = 'ライト';
+        localStorage.setItem('graphrec-theme', 'dark');
+      } else {
+        root.removeAttribute('data-theme');
+        document.getElementById('themeIcon').textContent = '🌙';
+        document.getElementById('themeLabel').textContent = 'ダーク';
+        localStorage.setItem('graphrec-theme', 'light');
+      }
+    }
+
+    // URLパラメータからID取得
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) {
+      document.getElementById('content').innerHTML = '<div class="error">カードIDが指定されていません</div>';
+    } else {
+      fetch('cards.json')
+        .then(r => r.json())
+        .then(data => {
+          const card = data.cards.find(c => c.id === id);
+          if (!card) {
+            document.getElementById('content').innerHTML = '<div class="error">カードが見つかりません</div>';
+            return;
+          }
+          document.title = `${card.title} — Tech Cards`;
+          renderCard(card);
+        })
+        .catch(() => {
+          document.getElementById('content').innerHTML = '<div class="error">データの読み込みに失敗しました</div>';
+        });
+    }
+
+    function renderCard(c) {
+      let html = '';
+
+      // ヘッダー
+      html += `
+        <header class="page-header">
+          <div class="page-title">🗺️ ${c.title}</div>
+          ${c.subtitle ? `<div class="page-subtitle">${c.subtitle}</div>` : ''}
+          <div class="meta">
+            <span class="meta-date">${c.date}</span>
+            <div class="tags">${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+          </div>
+        </header>
+      `;
+
+      // 用語解説ボックス
+      if (c.terms?.length) {
+        c.terms.forEach(term => {
+          html += `
+            <div class="term-box">
+              <div class="term-label">📖 用語解説：<strong>${term.word}</strong></div>
+              <p>${term.desc}</p>
+            </div>
+          `;
+        });
+      }
+
+      html += '<hr class="divider">';
+
+      // セクション
+      c.sections?.forEach(sec => {
+        html += `
+          <div class="section">
+            <div class="section-heading">
+              <span class="section-num">${sec.num}</span>
+              <span>${sec.title}</span>
+            </div>
+            <div class="section-body">
+              ${sec.body ? `<p>${sec.body}</p>` : ''}
+              ${sec.bullets?.length ? `<ul>${sec.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+              ${sec.analogy ? `<div class="analogy">${sec.analogy}</div>` : ''}
+            </div>
+          </div>
+        `;
+      });
+
+      // 比較表
+      if (c.table) {
+        html += `
+          <hr class="divider">
+          <div class="compare-section">
+            <div class="compare-label">観点別 比較マトリクス</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>${c.table.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                <tbody>${c.table.rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // 結論
+      if (c.conclusion) {
+        html += `
+          <div class="conclusion">
+            <div class="conclusion-title">💡 選び方の結論</div>
+            <p>${c.conclusion}</p>
+          </div>
+        `;
+      }
+
+      document.getElementById('content').innerHTML = html;
+    }
+  </script>
+</body>
+</html>
