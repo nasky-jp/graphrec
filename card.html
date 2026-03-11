@@ -647,11 +647,11 @@
           }),
         });
 
+        const raw = await res.text();
         let data;
         try {
-          data = await res.json();
+          data = JSON.parse(raw);
         } catch (parseErr) {
-          const raw = await res.text().catch(() => '(読み取り不可)');
           botBubble.classList.remove('streaming');
           botBubble.textContent = `⚠️ サーバーエラー (${res.status}): ${raw.slice(0, 200)}`;
           btn.disabled = false;
