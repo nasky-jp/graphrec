@@ -1,14 +1,17 @@
-export const config = { runtime: 'edge' };
-
-const DISCORD_BOT_TOKEN    = process.env.DISCORD_BOT_TOKEN;
+// Node.js Runtime（Edge は setTimeout が使えないため）
+const DISCORD_BOT_TOKEN        = process.env.DISCORD_BOT_TOKEN;
 const GRAPHREC_CHAT_CHANNEL_ID = process.env.GRAPHREC_CHAT_CHANNEL_ID;
-const WEBCHAT_PREFIX       = '[WEBCHAT]';
-const REPLY_PREFIX         = '[REPLY]';
-const POLL_INTERVAL_MS     = 2000;  // 2秒ごとにポーリング
-const POLL_MAX_ATTEMPTS    = 25;    // 最大50秒待つ
+const WEBCHAT_PREFIX           = '[WEBCHAT]';
+const REPLY_PREFIX             = '[REPLY]';
+const POLL_INTERVAL_MS         = 2500;
+const POLL_MAX_ATTEMPTS        = 10;   // 最大25秒（Vercel Node関数は60秒制限）
 
 function makeSessionId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function sendDiscordMessage(content) {
@@ -23,7 +26,10 @@ async function sendDiscordMessage(content) {
       body: JSON.stringify({ content }),
     }
   );
-  if (!res.ok) throw new Error(`Discord send failed: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Discord send failed: ${res.status} ${err}`);
+  }
   return await res.json();
 }
 
@@ -38,100 +44,57 @@ async function fetchRecentMessages(after) {
   return await res.json();
 }
 
-async function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+export default async function handler(req, res) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-export default async function handler(req) {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
-  }
-
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   if (!DISCORD_BOT_TOKEN || !GRAPHREC_CHAT_CHANNEL_ID) {
-    return new Response(JSON.stringify({ error: 'Bot not configured' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    return res.status(500).json({ error: 'Bot not configured' });
   }
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
-
-  const { message, card } = body;
-  if (!message) {
-    return new Response(JSON.stringify({ error: 'message is required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
+  const { message, card } = req.body || {};
+  if (!message) return res.status(400).json({ error: 'message is required' });
 
   const sessionId = makeSessionId();
-
-  // カード情報を1行にまとめてDiscordに送る
   const cardContext = card
     ? `タイトル:${card.title} / タグ:${(card.tags || []).join(',')} / 結論:${(card.conclusion || '').slice(0, 100)}`
     : 'カード情報なし';
 
-  // [WEBCHAT]{session_id}|{card_context}|{user_message} 形式で送信
-  const discordContent = `${WEBCHAT_PREFIX}${sessionId}|${cardContext}|${message}`;
+  const discordContent = `${WEBCHAT_PREFIX}${sessionId}|${cardContext}|${message}`.slice(0, 1900);
 
   let sentMsg;
   try {
-    sentMsg = await sendDiscordMessage(discordContent.slice(0, 1900));
+    sentMsg = await sendDiscordMessage(discordContent);
   } catch (err) {
-    return new Response(JSON.stringify({ error: `Discord送信失敗: ${err.message}` }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    return res.status(500).json({ error: `Discord送信失敗: ${err.message}` });
   }
 
   // botの返信をポーリングで待つ
-  // sentMsg.id より後のメッセージの中から [REPLY]{sessionId}| で始まるものを探す
   let reply = null;
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
     await sleep(POLL_INTERVAL_MS);
     try {
       const messages = await fetchRecentMessages(sentMsg.id);
       const found = messages.find(m =>
-        m.content.startsWith(`${REPLY_PREFIX}${sessionId}|`)
+        m.content && m.content.startsWith(`${REPLY_PREFIX}${sessionId}|`)
       );
       if (found) {
         reply = found.content.slice(`${REPLY_PREFIX}${sessionId}|`.length);
         break;
       }
     } catch (err) {
-      console.error('poll error:', err);
+      console.error('poll error:', err.message);
     }
   }
 
   if (!reply) {
-    return new Response(JSON.stringify({ error: 'タイムアウト：Botが応答しませんでした' }), {
-      status: 504,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    return res.status(504).json({ error: 'タイムアウト：Botが応答しませんでした（25秒）' });
   }
 
-  return new Response(JSON.stringify({ reply }), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
+  return res.status(200).json({ reply });
 }

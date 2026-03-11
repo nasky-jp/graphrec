@@ -347,41 +347,46 @@
         });
     }
 
-    // ── 用語解説：初出テキストマッチ ──────────────────
-    // セクションのテキスト（body + bullets）を走査し、
-    // 用語が初めて登場するセクションの直前に解説ボックスを挿入する
-    function assignTermsToSections(sections, terms) {
-      if (!terms?.length) return sections.map(s => ({ ...s, insertTerms: [] }));
-
-      const assigned = sections.map(s => ({ ...s, insertTerms: [] }));
-      const usedTerms = new Set();
-
-      assigned.forEach(sec => {
-        const text = [
-          sec.title || '',
-          sec.body || '',
-          ...(sec.bullets || []),
-          sec.analogy || '',
-        ].join(' ').toLowerCase();
-
-        terms.forEach(term => {
-          if (usedTerms.has(term.word)) return;
-          if (text.includes(term.word.toLowerCase())) {
-            sec.insertTerms.push(term);
-            usedTerms.add(term.word);
-          }
-        });
-      });
-
-      return assigned;
-    }
+    // ── 用語解説：初出直後挿入 ────────────────────────
+    // テキストブロック（body・bullet・analogy）を1行ずつ走査し、
+    // 用語が初めて登場したブロックの直後に解説ボックスを挿入する。
+    // どのブロックにも出てこない用語は表示しない。
 
     function termBoxHtml(term) {
-      return `
-        <div class="term-box">
+      return `<div class="term-box">
           <div class="term-label">📖 用語解説：<strong>${term.word}</strong></div>
           <p>${term.desc}</p>
         </div>`;
+    }
+
+    // termMap: { keyword: term }
+    function buildTermMap(terms) {
+      const map = new Map();
+      (terms || []).forEach(term => {
+        const keyword = term.word.replace(/（.*）$/, '').trim();
+        map.set(keyword, term);
+      });
+      return map;
+    }
+
+    // テキストブロックをHTMLに変換し、初出用語の直後に解説を挿入して返す
+    function renderTextWithTerms(text, tag, termMap, usedTerms) {
+      if (!text) return '';
+      const blockHtml = tag === 'li'
+        ? `<li>${text}</li>`
+        : `<p>${text}</p>`;
+
+      // このブロックに初出する用語を収集
+      const toInsert = [];
+      for (const [keyword, term] of termMap) {
+        if (!usedTerms.has(keyword) && text.includes(keyword)) {
+          toInsert.push(term);
+          usedTerms.add(keyword);
+        }
+      }
+
+      if (!toInsert.length) return blockHtml;
+      return blockHtml + toInsert.map(t => termBoxHtml(t)).join('');
     }
 
     // ── カードレンダリング ─────────────────────────────
@@ -399,12 +404,32 @@
           </div>
         </header>`;
 
-      // セクション（用語解説を初出位置に挿入）
-      const sectionsWithTerms = assignTermsToSections(c.sections || [], c.terms || []);
+      // セクション（用語解説を初出ブロックの直後に挿入）
+      const termMap = buildTermMap(c.terms || []);
+      const usedTerms = new Set();
 
-      sectionsWithTerms.forEach(sec => {
-        // このセクションに紐づく用語解説を先に出す
-        sec.insertTerms.forEach(term => { html += termBoxHtml(term); });
+      (c.sections || []).forEach(sec => {
+        // body・bullets・analogy を1ブロックずつ処理し、初出直後に用語解説を挿入
+        let bodyHtml = '';
+        if (sec.body) {
+          bodyHtml += renderTextWithTerms(sec.body, 'p', termMap, usedTerms);
+        }
+        let bulletsHtml = '';
+        if (sec.bullets?.length) {
+          const items = sec.bullets.map(b => renderTextWithTerms(b, 'li', termMap, usedTerms)).join('');
+          bulletsHtml = `<ul>${items}</ul>`;
+        }
+        let analogyHtml = '';
+        if (sec.analogy) {
+          analogyHtml = `<div class="analogy">${sec.analogy}</div>`;
+          // analogy にも用語があれば直後に挿入
+          for (const [keyword, term] of termMap) {
+            if (!usedTerms.has(keyword) && sec.analogy.includes(keyword)) {
+              analogyHtml += termBoxHtml(term);
+              usedTerms.add(keyword);
+            }
+          }
+        }
 
         html += `
           <div class="section">
@@ -413,17 +438,9 @@
               <span>${sec.title}</span>
             </div>
             <div class="section-body">
-              ${sec.body ? `<p>${sec.body}</p>` : ''}
-              ${sec.bullets?.length ? `<ul>${sec.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
-              ${sec.analogy ? `<div class="analogy">${sec.analogy}</div>` : ''}
+              ${bodyHtml}${bulletsHtml}${analogyHtml}
             </div>
           </div>`;
-      });
-
-      // どのセクションにも出てこなかった用語は末尾にまとめて表示
-      const usedWords = new Set(sectionsWithTerms.flatMap(s => s.insertTerms.map(t => t.word)));
-      (c.terms || []).filter(t => !usedWords.has(t.word)).forEach(term => {
-        html += termBoxHtml(term);
       });
 
       // 比較表
