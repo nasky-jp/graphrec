@@ -1,6 +1,110 @@
 {
   "cards": [
     {
+      "id": "vimium-electron-keyboard-navigation",
+      "title": "VimiumをElectronアプリに流用できるか？",
+      "subtitle": "ブラウザ拡張 vs Electronアプリ内スクリプト",
+      "tags": [
+        "Vimium",
+        "Electron",
+        "Chromium",
+        "キーボード操作",
+        "拡張機能"
+      ],
+      "context_summary": {
+        "context": "ブラウザでVimiumを使いこなしており、ElectronアプリがChromiumベースであることに着目し、同様のキーボード操作体験をデスクトップアプリにも流用できないか気になった。",
+        "current": "Vimiumの基本機能は使いこなしている。ElectronアプリがChromiumベースでWebとの親和性が高いことは把握しているが、具体的な実現方法は未調査。",
+        "confusion": "Vimiumはブラウザ拡張（DOM操作前提）のため、Electronアプリに対してどこまで・どのように流用できるのか（コードそのまま？概念だけ？）が整理できていない。",
+        "goal": "ElectronベースのデスクトップアプリにVimium相当のキーボード操作を導入し、ブラウザ内外で統一したVim操作体験を構築したい。"
+      },
+      "terms": [
+        {
+          "word": "コンテンツスクリプト",
+          "desc": "ブラウザ拡張がWebページのDOMに直接注入して動くスクリプト。「店舗に派遣されたスタッフ」が店の棚（DOM）を自由に操作するイメージ。"
+        },
+        {
+          "word": "Preload Script",
+          "desc": "Electronがレンダラープロセス（WebView）起動前に実行するスクリプト。「部屋に入る前にルールを設定する用心棒」のような存在で、DOMとNode.js両方にアクセスできる。"
+        },
+        {
+          "word": "IPC（プロセス間通信）",
+          "desc": "Electronのメインプロセスとレンダラープロセスがやり取りする仕組み。「フロントとバックがAPIで会話する」構造と同じ。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — Vimiumそのものは流用不可、ただし「コード」と「概念」で分けると話が変わる",
+          "body": "Vimiumの拡張ファイルをそのままElectronに読み込ませることはできないが、VimiumのコアロジックはJavaScriptなので「概念ごと移植」は十分現実的。",
+          "bullets": [
+            "ブラウザ拡張はChrome Extension API（chrome.runtime等）に依存しており、Electronの拡張ロード機能では完全互換にならない",
+            "ただしElectronはChromiumベースのため、DOM操作・KeyboardEvent・hintオーバーレイ描画といったVimiumの根幹ロジックはそのまま動く可能性が高い",
+            "「拡張をインストールする」より「同等スクリプトをPreload Scriptとして注入する」アプローチが現実的"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — 3つのアプローチとしくみ",
+          "body": null,
+          "bullets": [
+            "【A】Electron標準の拡張ロード（session.loadExtension）: Chromium拡張をそのまま読み込む機能。Vimiumは動作実績あり（VS Codeには不可、Chromiumが見える一般Electronアプリなら動くケースも）",
+            "【B】Preload Scriptに移植: Vimiumのhint生成・キーバインドをPreloadに書き直す。自前ビルドのElectronアプリや開発中アプリに最適",
+            "【C】既存ライブラリ活用: vimium-like挙動を提供するOSSライブラリ（例: vim-keybindings, cVim相当実装）をWebView内スクリプトとして注入する"
+          ],
+          "analogy": "「外国製の電化製品を日本で使う」のに似ている。変換アダプタ（Preload Script）を使えば動くが、電圧の根本差（Chrome Extension API vs Electron API）は無視できない。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 目的別の選択基準",
+          "body": "「自分でコードを変更できるか」と「対象アプリを自分がビルドしているか」で手段が決まる。",
+          "bullets": [
+            "【既存アプリを使いたいだけ】→ session.loadExtension でVimiumをロードするElectronラッパー（例: Franz, Beaker Browser的アプローチ）を試す。ただしアプリ側がloadExtensionを許可していないと不可",
+            "【自分でElectronアプリを開発中】→ Preload Scriptにvimium-lite相当を実装（ヒントオーバーレイ・hjkl移動・f/Fキーバインド）が最もクリーン",
+            "【VS CodeなどOSSアプリ】→ 設定で自前keybindingを定義するか、既存拡張（Vim拡張等）を使う方が現実的。Electronレイヤーからの介入は困難",
+            "最速の検証方法: 対象ElectronアプリのDevToolsを開き（Ctrl+Shift+I）、VimiumのContentScriptコアをConsoleに貼り付けて動作確認する"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "session.loadExtension（拡張読み込み）",
+          "Preload Script移植"
+        ],
+        "rows": [
+          [
+            "コード変更の要否",
+            "不要（既存Vimiumをロード）",
+            "要（VimiumロジックをJS移植）"
+          ],
+          [
+            "対象アプリの制約",
+            "アプリがloadExtensionを許可している必要あり",
+            "自分がビルドするアプリのみ"
+          ],
+          [
+            "完成度・安定性",
+            "Vimiumの全機能がそのまま使える可能性",
+            "移植範囲による（段階的に実装可）"
+          ],
+          [
+            "Chrome Extension API依存",
+            "あり（互換性リスクあり）",
+            "なし（DOM/KeyboardEventのみ使用）"
+          ],
+          [
+            "おすすめ場面",
+            "既製アプリへの即時適用を試したい",
+            "自社・自作Electronアプリに統合したい"
+          ]
+        ]
+      },
+      "conclusion": "「概念ごと移植する」方向であればElectronとVimiumの親和性は高く、Preload ScriptへのDOM操作・キーバインド移植は十分実現可能。ブラウザ内外でVim操作を統一するゴールには、自作アプリならPreload Script実装、既製アプリならまずDevToolsでのスクリプト動作確認から始めるのが最短ルート。",
+      "date": "2026-03-12"
+    },
+    {
       "id": "electron-vs-alternatives",
       "title": "Electron 開発と競合技術の選定ガイド",
       "subtitle": "Electron / Tauri / NW.js / PWA",
