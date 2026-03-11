@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fishman's Tech Cards</title>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
   <style>
     :root {
       --bg: #ffffff;
@@ -14,6 +15,9 @@
       --accent-light: #e8f0fb;
       --border: #dddddd;
       --card-hover: #f0f6ff;
+      --highlight-bg: #fff176;
+      --highlight-text: #1a1a1a;
+      --snippet-text: #555555;
     }
     [data-theme="dark"] {
       --bg: #121212;
@@ -24,6 +28,9 @@
       --accent-light: #1a2a3a;
       --border: #333333;
       --card-hover: #1a2535;
+      --highlight-bg: #7c6f00;
+      --highlight-text: #ffffff;
+      --snippet-text: #aaaaaa;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -50,16 +57,14 @@
     .site-title span { color: var(--accent); }
     .card-count { font-size: 0.85rem; color: var(--text-muted); }
 
-    /* 検索・フィルター */
-    .filter-bar {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 20px;
+    /* 検索バー */
+    .search-wrap {
+      position: relative;
+      width: 100%;
     }
     .search-input {
       width: 100%;
-      padding: 10px 14px;
+      padding: 10px 40px 10px 14px;
       border: 1px solid var(--border);
       border-radius: 8px;
       font-size: 0.95rem;
@@ -69,18 +74,53 @@
       transition: border-color 0.2s;
     }
     .search-input:focus { border-color: var(--accent); }
+    .search-clear {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: none;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--text); }
+
+    /* フィルターバー */
+    .filter-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
     .month-select {
-      padding: 10px 14px;
+      padding: 6px 10px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 0.875rem;
       background: var(--surface);
       color: var(--text);
       outline: none;
-      transition: border-color 0.2s;
-      width: auto;
+      cursor: pointer;
     }
     .month-select:focus { border-color: var(--accent); }
+    .filter-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
     .tag-filters { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag-btn {
       padding: 4px 12px;
@@ -92,11 +132,22 @@
       cursor: pointer;
       transition: all 0.15s;
     }
-    .tag-btn.active, .tag-btn:hover {
+    .tag-btn.active {
       background: var(--accent);
       color: #fff;
       border-color: var(--accent);
     }
+    .tag-btn:hover:not(.active) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .active-tags-hint {
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-top: 2px;
+      display: none;
+    }
+    .active-tags-hint.visible { display: block; }
 
     /* カード一覧 */
     .card-list { display: flex; flex-direction: column; gap: 12px; }
@@ -123,9 +174,9 @@
       margin-bottom: 6px;
     }
     .card-item-title { font-weight: 700; font-size: 1rem; color: var(--text); }
-    .card-item-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .card-item-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
     .card-item-date { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
-    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 0; }
     .card-tag {
       font-size: 0.72rem;
       padding: 2px 8px;
@@ -134,6 +185,20 @@
       border-radius: 10px;
       border: 1px solid var(--accent);
       font-weight: 600;
+    }
+    .card-snippet {
+      font-size: 0.8rem;
+      color: var(--snippet-text);
+      margin-top: 8px;
+      line-height: 1.5;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    mark {
+      background: var(--highlight-bg);
+      color: var(--highlight-text);
+      border-radius: 2px;
+      padding: 0 2px;
     }
 
     /* 空状態 */
@@ -172,9 +237,17 @@
     </header>
 
     <div class="filter-bar">
-      <input class="search-input" type="text" id="searchInput" placeholder="🔍 キーワードで検索..." oninput="render()">
-      <select class="month-select" id="monthSelect" onchange="render()"></select>
+      <div class="search-wrap">
+        <input class="search-input" type="text" id="searchInput"
+          placeholder="🔍 キーワード・タイポOKで検索..." oninput="onSearch()">
+        <button class="search-clear" id="searchClear" onclick="clearSearch()" title="クリア">✕</button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">月：</span>
+        <select class="month-select" id="monthSelect" onchange="render()"></select>
+      </div>
       <div class="tag-filters" id="tagFilters"></div>
+      <div class="active-tags-hint" id="activeTagsHint"></div>
     </div>
 
     <div class="card-list" id="cardList"></div>
@@ -187,13 +260,36 @@
 
   <script>
     let allCards = [];
-    let activeTag = null;
+    let activeTags = new Set();  // 複数タグAND選択
+    let fuse = null;
+    let fuseResults = null;  // 検索結果キャッシュ
 
-    // cards.json 読み込み
+    // ── Fuse.js 初期化 ─────────────────────────────────
+    function initFuse(cards) {
+      fuse = new Fuse(cards, {
+        keys: [
+          { name: 'title',      weight: 0.4 },
+          { name: 'subtitle',   weight: 0.2 },
+          { name: 'tags',       weight: 0.2 },
+          { name: 'conclusion', weight: 0.1 },
+          { name: 'sections.body',    weight: 0.05 },
+          { name: 'sections.bullets', weight: 0.05 },
+        ],
+        threshold: 0.4,       // 0=完全一致, 1=なんでもOK
+        includeScore: true,
+        includeMatches: true,
+        minMatchCharLength: 2,
+        useExtendedSearch: false,
+        ignoreLocation: true,  // 日本語テキスト全体をスキャン
+      });
+    }
+
+    // ── cards.json 読み込み ────────────────────────────
     fetch('cards.json')
       .then(r => r.json())
       .then(data => {
         allCards = data.cards.sort((a, b) => b.date.localeCompare(a.date));
+        initFuse(allCards);
         buildMonthFilter();
         buildTagFilters();
         render();
@@ -202,6 +298,7 @@
         document.getElementById('cardList').innerHTML = '<div class="empty">カードの読み込みに失敗しました</div>';
       });
 
+    // ── フィルター構築 ─────────────────────────────────
     function buildMonthFilter() {
       const months = [...new Set(allCards.map(c => c.date.slice(0, 7)))].sort((a, b) => b.localeCompare(a));
       const select = document.getElementById('monthSelect');
@@ -223,49 +320,154 @@
         const btn = document.createElement('button');
         btn.className = 'tag-btn';
         btn.textContent = tag;
-        btn.onclick = () => {
-          activeTag = activeTag === tag ? null : tag;
-          document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
-          if (activeTag) btn.classList.add('active');
-          render();
-        };
+        btn.dataset.tag = tag;
+        btn.onclick = () => toggleTag(tag, btn);
         container.appendChild(btn);
       });
     }
 
-    function render() {
-      const q = document.getElementById('searchInput').value.toLowerCase();
-      const selectedMonth = document.getElementById('monthSelect').value;
-      const filtered = allCards.filter(c => {
-        const matchTag = !activeTag || c.tags.includes(activeTag);
-        const matchMonth = !selectedMonth || c.date.startsWith(selectedMonth);
-        const matchSearch = !q ||
-          c.title.toLowerCase().includes(q) ||
-          c.subtitle?.toLowerCase().includes(q) ||
-          c.tags.some(t => t.toLowerCase().includes(q));
-        return matchTag && matchMonth && matchSearch;
-      });
+    function toggleTag(tag, btn) {
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+        btn.classList.remove('active');
+      } else {
+        activeTags.add(tag);
+        btn.classList.add('active');
+      }
+      updateActiveTagsHint();
+      render();
+    }
 
-      document.getElementById('cardCount').textContent = `${filtered.length} / ${allCards.length} カード`;
+    function updateActiveTagsHint() {
+      const hint = document.getElementById('activeTagsHint');
+      if (activeTags.size > 1) {
+        hint.textContent = `AND絞り込み中: ${[...activeTags].join(' & ')}`;
+        hint.classList.add('visible');
+      } else {
+        hint.classList.remove('visible');
+      }
+    }
+
+    // ── 検索イベント ───────────────────────────────────
+    function onSearch() {
+      const q = document.getElementById('searchInput').value;
+      const clearBtn = document.getElementById('searchClear');
+      clearBtn.classList.toggle('visible', q.length > 0);
+
+      if (q.trim().length >= 2) {
+        fuseResults = fuse.search(q);
+      } else {
+        fuseResults = null;
+      }
+      render();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchClear').classList.remove('visible');
+      fuseResults = null;
+      render();
+    }
+
+    // ── ハイライト生成 ────────────────────────────────
+    function highlight(text, matches, key) {
+      if (!matches || !text) return escapeHtml(text || '');
+      const match = matches.find(m => m.key === key);
+      if (!match || !match.indices?.length) return escapeHtml(text);
+
+      let result = '';
+      let lastIndex = 0;
+      const sorted = [...match.indices].sort((a, b) => a[0] - b[0]);
+      for (const [start, end] of sorted) {
+        result += escapeHtml(text.slice(lastIndex, start));
+        result += `<mark>${escapeHtml(text.slice(start, end + 1))}</mark>`;
+        lastIndex = end + 1;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // スニペット: 結論の先頭60文字
+    function buildSnippet(card, matches) {
+      if (!matches) return '';
+      const conclusionMatch = matches.find(m => m.key === 'conclusion');
+      if (conclusionMatch && card.conclusion) {
+        return `…${escapeHtml(card.conclusion.slice(0, 80))}…`;
+      }
+      const bodyMatch = matches.find(m => m.key === 'sections.body');
+      if (bodyMatch) {
+        const body = card.sections?.find(s => s.body)?.body || '';
+        return body ? `…${escapeHtml(body.slice(0, 80))}…` : '';
+      }
+      return '';
+    }
+
+    // ── レンダリング ───────────────────────────────────
+    function render() {
+      const selectedMonth = document.getElementById('monthSelect').value;
+
+      let items;  // { card, matches }[]
+
+      if (fuseResults) {
+        // Fuse検索結果を使う
+        items = fuseResults
+          .map(r => ({ card: r.item, matches: r.matches, score: r.score }))
+          .filter(({ card }) => {
+            const matchTag = activeTags.size === 0 || [...activeTags].every(t => card.tags.includes(t));
+            const matchMonth = !selectedMonth || card.date.startsWith(selectedMonth);
+            return matchTag && matchMonth;
+          });
+      } else {
+        // 通常フィルター
+        items = allCards
+          .filter(card => {
+            const matchTag = activeTags.size === 0 || [...activeTags].every(t => card.tags.includes(t));
+            const matchMonth = !selectedMonth || card.date.startsWith(selectedMonth);
+            return matchTag && matchMonth;
+          })
+          .map(card => ({ card, matches: null, score: 0 }));
+      }
+
+      document.getElementById('cardCount').textContent = `${items.length} / ${allCards.length} カード`;
 
       const list = document.getElementById('cardList');
-      if (filtered.length === 0) {
+      if (items.length === 0) {
         list.innerHTML = '<div class="empty">該当するカードがありません</div>';
         return;
       }
-      list.innerHTML = filtered.map(c => `
-        <a class="card-item" href="card.html?id=${c.id}">
-          <div class="card-item-header">
-            <div class="card-item-title">🗺️ ${c.title}</div>
-            <div class="card-item-date">${c.date}</div>
-          </div>
-          <div class="card-item-subtitle">${c.subtitle || ''}</div>
-          <div class="card-tags">${c.tags.map(t => `<span class="card-tag">${t}</span>`).join('')}</div>
-        </a>
-      `).join('');
+
+      list.innerHTML = items.map(({ card: c, matches }) => {
+        const titleHtml    = highlight(c.title, matches, 'title');
+        const subtitleHtml = highlight(c.subtitle, matches, 'subtitle');
+        const snippet      = buildSnippet(c, matches);
+        const tagsHtml = c.tags.map(t => {
+          const isActive = activeTags.has(t);
+          const tagHtml = highlight(t, matches, 'tags');
+          return `<span class="card-tag${isActive ? ' active' : ''}">${tagHtml}</span>`;
+        }).join('');
+
+        return `
+          <a class="card-item" href="card.html?id=${c.id}">
+            <div class="card-item-header">
+              <div class="card-item-title">🗺️ ${titleHtml}</div>
+              <div class="card-item-date">${c.date}</div>
+            </div>
+            ${subtitleHtml ? `<div class="card-item-subtitle">${subtitleHtml}</div>` : ''}
+            <div class="card-tags">${tagsHtml}</div>
+            ${snippet ? `<div class="card-snippet">${snippet}</div>` : ''}
+          </a>`;
+      }).join('');
     }
 
-    // ダークモード
+    // ── ダークモード ───────────────────────────────────
     const root = document.documentElement;
     if (localStorage.getItem('graphrec-theme') === 'dark') {
       root.setAttribute('data-theme', 'dark');
