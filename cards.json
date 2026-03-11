@@ -4,7 +4,13 @@
       "id": "graphrec-knowledge-system",
       "title": "グラレコ型ナレッジベースの設計と構築",
       "subtitle": "Discord Bot × Vercel × JSON駆動HTML",
-      "tags": ["ナレッジ管理", "Discord Bot", "Vercel", "JSON駆動", "設計"],
+      "tags": [
+        "ナレッジ管理",
+        "Discord Bot",
+        "Vercel",
+        "JSON駆動",
+        "設計"
+      ],
       "date": "2026-03-12",
       "terms": [
         {
@@ -68,13 +74,37 @@
         }
       ],
       "table": {
-        "headers": ["観点", "Discord中継方式（採用）", "Anthropic API直接方式"],
+        "headers": [
+          "観点",
+          "Discord中継方式（採用）",
+          "Anthropic API直接方式"
+        ],
         "rows": [
-          ["APIキーコスト", "追加不要（既存bot利用）", "Vercelに追加キー必要"],
-          ["レイテンシ", "3〜25秒（ポーリング）", "1〜3秒（直接）"],
-          ["Claude会話履歴", "セッションID管理可", "同上"],
-          ["ローカルファイル操作", "可（bot.pyがgit push）", "不可（サーバーレス）"],
-          ["実装複雑度", "中（Discord中継分）", "低"]
+          [
+            "APIキーコスト",
+            "追加不要（既存bot利用）",
+            "Vercelに追加キー必要"
+          ],
+          [
+            "レイテンシ",
+            "3〜25秒（ポーリング）",
+            "1〜3秒（直接）"
+          ],
+          [
+            "Claude会話履歴",
+            "セッションID管理可",
+            "同上"
+          ],
+          [
+            "ローカルファイル操作",
+            "可（bot.pyがgit push）",
+            "不可（サーバーレス）"
+          ],
+          [
+            "実装複雑度",
+            "中（Discord中継分）",
+            "低"
+          ]
         ]
       },
       "conclusion": "APIキー追加コストなしでClaudeチャットを実現するには、既存のDiscord botをプロキシとして使うアーキテクチャが有効。ポーリングによるレイテンシは許容範囲内（25秒上限）。ローカルファイル操作（git push）が必要な処理もbot.py側に集約できるため、Vercelをフロントエンド配信専用に保てる点が最大の利点。",
@@ -182,7 +212,15 @@
         ]
       },
       "conclusion": "「概念ごと移植する」方向であればElectronとVimiumの親和性は高く、Preload ScriptへのDOM操作・キーバインド移植は十分実現可能。ブラウザ内外でVim操作を統一するゴールには、自作アプリならPreload Script実装、既製アプリならまずDevToolsでのスクリプト動作確認から始めるのが最短ルート。",
-      "date": "2026-03-12"
+      "date": "2026-03-12",
+      "threads": [
+        {
+          "id": "t_1773254381",
+          "date": "2026-03-12",
+          "question": "discordは可能ですか？",
+          "answer": "## 結論：Discordは可能だが制限あり\n\nDiscordはElectronベースなので、  \n理論上はPreload Script経由で  \nVimiumのキーバインドをDOM操作で実装できます。\n\n---\n\n## ただし2つの壁がある\n\n**① コンテンツセキュリティポリシー（CSP）**  \nDiscordは外部スクリプト注入を厳しく制限しています。  \n通常の拡張機能では動作しません。\n\n**② デバッグポートが必要**  \nDiscordを `--remote-debugging-port=9222` で  \n起動する必要があります（通常起動ではNG）。\n\n---\n\n## 現実的なアプローチ\n\n```\nDiscordを CDPポート付きで起動\n  → agent-browser connect 9222\n  → Preload Script or DOM操作でキーバインド注入\n```\n\nただしDiscordの自動アップデートで  \n設定がリセットされるリスクがあります。\n\n---\n\n## 実用的な代替案\n\n| 方法 | 難易度 | 安定性 |\n|---|---|---|\n| AutoHotkey でグローバルキーバインド | 低 | 高 |\n| Vimium C (Chrome版Discordで使用) | 低 | 中 |\n| CDPポート経由のカスタムスクリプト | 高 | 低 |\n\n**ブラウザ版Discord + Vimium**が  \n最も安定した選択肢です。"
+        }
+      ]
     },
     {
       "id": "electron-vs-alternatives",
