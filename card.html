@@ -381,11 +381,11 @@
     // ── カード読み込み ─────────────────────────────────
     const cardId = new URLSearchParams(location.search).get('id');
     let currentCard = null;
+    let allCards = [];
 
     if (!cardId) {
       document.getElementById('content').innerHTML = '<div class="error">カードIDが指定されていません</div>';
     } else {
-      let allCards = [];
       fetch('cards.json')
         .then(r => r.json())
         .then(data => {
