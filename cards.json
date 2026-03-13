@@ -33,6 +33,209 @@
   },
   "cards": [
     {
+      "id": "hook-driven-vs-rule-dependent-journal",
+      "title": "journal自律記録の信頼性設計",
+      "subtitle": "Hook駆動 vs ルール依存",
+      "tags": [
+        "Claude Code",
+        "Hooks",
+        "journal",
+        "自動化",
+        "信頼性設計"
+      ],
+      "context_summary": {
+        "context": "CLAUDE.mdにルールを書いてもセッション切断時にjournal記録が漏れる問題を繰り返していた。",
+        "current": "PostToolUse HookとPreCompact HookはSessionEnd Hookより信頼性が高いことを把握している。",
+        "confusion": "「Claudeが書く意思」に依存する設計では構造的に記録漏れを防げないことに気づくまでに時間がかかった。",
+        "goal": "git pushをトリガーにPostToolUseフックでjournalの未コミット変更を自動コミットする仕組みを構築したかった。"
+      },
+      "terms": [
+        {
+          "word": "PostToolUse Hook",
+          "desc": "Claudeが特定のツール（例：Bash）を実行した直後に自動で走るシェルスクリプト。郵便受けに手紙が投函された瞬間に鳴るベルのようなもので、Claudeの意思とは無関係に必ず発火する。"
+        },
+        {
+          "word": "PreCompact Hook",
+          "desc": "会話のコンテキストが圧縮される直前に発火するフック。セッションが長くなり記憶が整理される前の「退場チェック」のようなタイミングで処理を割り込ませられる。"
+        },
+        {
+          "word": "SessionEnd Hook",
+          "desc": "セッション終了時に発火することを期待されるフックだが、強制終了・クラッシュ・切断では発火しない。「店じまいの時に掃除する」と決めても、停電で突然閉店すると掃除できないのと同じ。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 「意思」に依存する設計は構造的に壊れる",
+          "body": "ルールベースの記録設計はClaudeが「書こうとする意思」を持つことを前提とするが、セッション切断はその意思ごと消滅させる。",
+          "bullets": [
+            "CLAUDE.mdのルールはClaudeが読んで実行する→セッションが死ぬと読まれない",
+            "SessionEnd Hookはクラッシュ・強制終了では発火しない→最も必要な場面で失敗する",
+            "記録漏れの根本原因は「やる気」ではなく「トリガーの信頼性」の問題"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — Hook駆動が信頼できる理由",
+          "body": null,
+          "bullets": [
+            "PostToolUse Hookはツール実行という物理的なイベントに紐づく→Claudeの状態に依存しない",
+            "PreCompact Hookはコンテキスト圧縮という避けられないライフサイクルイベントに紐づく",
+            "git pushというBashツール実行はPostToolUse Hookで確実にキャプチャできる",
+            "フックはClaude外部のプロセスが実行するため、セッション死亡後も発火タイミングを保持"
+          ],
+          "analogy": "ルール依存は「忘れずにメモしてね」という口約束。Hook駆動は「ドアを開けると自動で録画が始まる防犯カメラ」。行動者の意思ではなくイベントそのものがトリガー。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — git pushトリガーのjournal自動コミット設計",
+          "body": "PostToolUse HookでBash（git push）を検知→journal未コミット変更を自動でgit add & commitする構成が最も信頼性が高い。",
+          "bullets": [
+            "hooks.jsonにPostToolUse設定を追加：matcher=Bash、trigger条件にgit pushを含める",
+            "フックスクリプトでjournalファイルのgit statusを確認し、変更があればgit add & commitを実行",
+            "PreCompact Hookも補完的に設定しておくと、長時間セッションでの漏れを二重防止できる",
+            "SessionEnd Hookは「おまけ」として設定しても良いが、信頼性の柱にしてはいけない"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "ルール依存（CLAUDE.md）",
+          "Hook駆動（PostToolUse）"
+        ],
+        "rows": [
+          [
+            "実行主体",
+            "Claude（意思あり）",
+            "フックプロセス（自動）"
+          ],
+          [
+            "セッション切断時",
+            "記録されない",
+            "push前に発火済みなら保存済み"
+          ],
+          [
+            "クラッシュ耐性",
+            "なし",
+            "高い（イベント単位で発火）"
+          ],
+          [
+            "設定コスト",
+            "低い（文章を書くだけ）",
+            "中程度（hooks.json + スクリプト）"
+          ],
+          [
+            "信頼性",
+            "低い（構造的欠陥あり）",
+            "高い（イベント駆動）"
+          ],
+          [
+            "git push連動",
+            "不可",
+            "PostToolUseで実現可能"
+          ]
+        ]
+      },
+      "conclusion": "journal記録の漏れを構造的に防ぐには、Claudeの意思に依存するルールベース設計を捨て、git pushというイベントにPostToolUse Hookを紐づける設計に移行するべき。「書き忘れ防止」ではなく「書かなくても自動で記録される仕組み」を作ることがゴール達成の本質。",
+      "date": "2026-03-13"
+    },
+    {
+      "id": "discord-bot-vercel-debug-pitfalls",
+      "title": "Discord Bot × Vercel Functions デバッグ落とし穴パターン",
+      "subtitle": "504に見えて実は別の罠",
+      "tags": [
+        "Discord",
+        "Vercel",
+        "デバッグ",
+        "Edge Runtime",
+        "discord.py"
+      ],
+      "context_summary": {
+        "context": "Discord BotとVercel Functionsを組み合わせたグラレコナレッジベースを構築していた。",
+        "current": "discord.pyとVercel Edgeの基本的な使い方は理解している。",
+        "confusion": "504タイムアウトに見えていたエラーの根本原因が `if message.author.bot: return` によるBot自身のメッセージ無視と、Edge Runtimeでの `setTimeout` 非動作だったため特定が困難だった。",
+        "goal": "Vercel FunctionsからDiscord Bot Tokenで送信したメッセージを正しく処理させたかった。"
+      },
+      "terms": [
+        {
+          "word": "Edge Runtime",
+          "desc": "Vercelのサーバーレス実行環境の一種。通常のNode.jsより高速・軽量だが、Node.js固有のAPIが使えない制約がある。「新幹線は速いがローカル線の駅には止まれない」のと同じ。"
+        },
+        {
+          "word": "Bot自己ループ",
+          "desc": "Bot自身が投稿したメッセージをBotが再受信して処理してしまう無限ループ現象。`if message.author.bot: return` はその防御策だが、意図した送信まで遮断してしまうことがある。郵便受けに「Bot名義の手紙は開封しない」と張り紙したら、自分が自分宛に送った重要書類まで捨てられるようなもの。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 2つの無関係な罠が重なって504に見えた",
+          "body": "「タイムアウト」に見えるエラーの裏に、メッセージの黙殺とEdge Runtimeの非互換が同時に潜んでいた。",
+          "bullets": [
+            "Bot自己ループ防御（`if message.author.bot: return`）が、Vercelから送った正規リクエストまで無視していた",
+            "Edge Runtimeでは `setTimeout` が動作しないため、遅延処理・リトライ実装が完全に無音で失敗する"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "Vercel FunctionsがBot Tokenで送信 → discord.pyのon_messageが受信 → `message.author.bot == True` → 即return → 応答なし → Vercel側が504と判断",
+            "Edge Runtimeは `setTimeout` / `setInterval` 非対応。遅延やポーリングを書いても例外も出ずにスキップされ、処理が止まって見える",
+            "2つの問題が同時に発生すると、どちらが原因か切り分けるのが非常に困難になる"
+          ],
+          "analogy": "Edge Runtimeは「冷凍食品専用レンジ」のようなもの。普通の料理も入れられるが、長時間加熱やタイマー機能には対応していないのに、エラーが出ず静かに止まる。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — Vercel→Bot連携を正しく通すための判断基準",
+          "body": "「誰が送ったか」ではなく「どのチャンネル・どの用途か」でフィルタリングする設計に切り替える。",
+          "bullets": [
+            "Bot自己ループ防御は `message.author.id == bot.user.id` に絞る（Bot Token全般を拒否しない）か、専用チャンネルIDや特定フラグで区別する",
+            "Edge Runtimeで遅延・リトライが必要な処理は、Vercel Serverless Functions（Node.js Runtime）に移行するか、Queueに切り出す",
+            "デバッグ時は問題を1つずつ切り離す：まずBot単体でcurl送信テスト → 次にEdge Function単体のログ確認 → 最後に統合テスト"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "Bot自己ループ防御の問題",
+          "Edge Runtime非互換の問題"
+        ],
+        "rows": [
+          [
+            "症状",
+            "メッセージが無視される（応答なし）",
+            "setTimeout/遅延処理が無音で失敗する"
+          ],
+          [
+            "見かけ上のエラー",
+            "504 / タイムアウト",
+            "504 / 応答なし"
+          ],
+          [
+            "根本原因",
+            "`message.author.bot: return` の過剰フィルタ",
+            "Node.js APIがEdge Runtimeで非対応"
+          ],
+          [
+            "修正方針",
+            "フィルタ条件をbot.user.id等で絞り込む",
+            "Node.js RuntimeまたはQueue構成に変更"
+          ]
+        ]
+      },
+      "conclusion": "Vercel FunctionsとDiscord Botを連携させる場合、Bot Token送信はBot自己ループ防御に引っかかりやすく、Edge Runtimeでは遅延処理が静かに失敗する。どちらも「タイムアウト」に見えるため、必ず単体切り離しでデバッグし、フィルタ条件の粒度とRuntime選択を見直すことが最短経路になる。",
+      "date": "2026-03-13"
+    },
+    {
       "id": "graphrec-skill-objective-evaluation",
       "title": "graphrecスキル — LLMによるグラレコ風ナレッジカード生成の設計と客観評価",
       "subtitle": "自作スキルの品質をどう客観的に測るか",
