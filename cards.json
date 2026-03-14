@@ -140,7 +140,15 @@
         ]
       },
       "conclusion": "LLMへの入力テキスト収集が目的であれば、FirecrawlはPlaywrightより明らかに上位互換の開発体験を提供する。ただしログイン必須サイトや複雑なブラウザ操作が絡む場合はPlaywrightを維持し、公開ページの収集部分だけFirecrawlに切り出すハイブリッド構成が現実解となる。",
-      "date": "2026-03-14"
+      "date": "2026-03-14",
+      "threads": [
+        {
+          "id": "t_1773478686",
+          "date": "2026-03-14",
+          "question": "更に最近台頭した低メモリのlightpandaについても比較検討してください",
+          "answer": "**結論:** Lightpandaは「軽量ヘッドレスブラウザ」として有望だが、2026年3月時点ではFirecrawlの代替にはならず、Playwrightとも棲み分けが異なる。\n\n---\n\n**3者の位置づけ整理**\n\n| ツール | 主用途 | メモリ | JS実行 |\n|---|---|---|---|\n| Firecrawl | LLM向けMD変換・クロール | 不要（API） | サーバー側で処理 |\n| Playwright | 複雑なブラウザ操作・認証 | 大（Chromium） | フル対応 |\n| Lightpanda | 軽量JSレンダリング | 少（Zig製） | 部分対応 |\n\n---\n\n**Lightpandaの特徴**\n\n- Zigで書かれた超軽量ヘッドレスブラウザ\n- ChromiumベースのPlaywrightと比べてメモリ使用量が1/10以下とされる\n- JavaScriptは「動的コンテンツの取得」程度は対応するが、複雑なUI操作は未対応\n\n---\n\n**カードの結論への影響**\n\n- LLMテキスト収集目的 → **Firecrawl優位**は変わらない\n- 軽量環境でJSレンダリングが必要 → **Lightpandaが新しい選択肢**\n- 認証・複雑操作 → **Playwright一択**は依然として正\n\n---\n\n**使い分け更新版**\n\n```\nLLMテキスト収集     → Firecrawl\n低メモリ・JSレンダリング → Lightpanda（新枠）\nログイン・UI操作    → Playwright\n```\n\nLightpandaはまだ開発初期のため、プロダクション利用はリスク評価が必要。"
+        }
+      ]
     },
     {
       "id": "hook-driven-vs-rule-dependent-journal",
