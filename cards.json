@@ -33,6 +33,116 @@
   },
   "cards": [
     {
+      "id": "firecrawl-vs-playwright",
+      "title": "FirecrawlとPlaywrightの使い分け",
+      "subtitle": "LLMクロールパイプラインに最適なツールを選ぶ",
+      "tags": [
+        "Firecrawl",
+        "Playwright",
+        "Webスクレイピング",
+        "LLM",
+        "クロール"
+      ],
+      "context_summary": {
+        "context": "LLMのWebクロールパイプラインで現在Playwrightを使っているが、より使用感の良いツールがないか模索している。",
+        "current": "Playwrightを実際にLLMのデータ取得で使った経験がある。Firecrawlは名前を知っている（またはLLMまわりの文脈で認識した）レベル。",
+        "confusion": "どちらもWebからデータを取れることはわかるが、Playwrightと比べてFirecrawlがどんな場面で優れているか、実際の使い勝手の違いが見えない。",
+        "goal": "現在のLLMクロールパイプラインをより快適に実装・運用するために、Firecrawlへの乗り換えが有効かどうか判断して実装に進みたい。"
+      },
+      "terms": [
+        {
+          "word": "マークダウン変換",
+          "desc": "HTMLページをLLMが読みやすいMarkdown形式に自動整形すること。料理で言えば「食材をすでに下処理してお皿に盛りつけた状態」で渡してくれるイメージ。"
+        },
+        {
+          "word": "ヘッドレスブラウザ",
+          "desc": "画面表示なしでWebページを操作・描画するブラウザ。人間の目には見えないが、JavaScriptも実行できる「見えない操縦者」のようなもの。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 抽象度が違う",
+          "body": "PlaywrightはヘッドレスブラウザをそのままPythonで操る「低レイヤーの操縦桿」、FirecrawlはLLM向けに特化したデータ取得のための「高レイヤーのAPIサービス」。",
+          "bullets": [
+            "Playwright：ブラウザの操作手順をそのままコードに書く（クリック・スクロール・待機）",
+            "Firecrawl：URLを渡すだけでクリーンなMarkdown・構造化データが返ってくる"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみの違い",
+          "body": null,
+          "bullets": [
+            "Playwright：ヘッドレスブラウザを起動→JSレンダリング→DOM操作→HTML取得→自分でパース、という全工程を自前で制御",
+            "Firecrawl：クロール・レンダリング・ノイズ除去・マークダウン変換をサーバー側でまとめて処理し、LLMに渡せる形で返却",
+            "Firecrawlはサイトマップを使った再帰クロールや、複数URLの一括処理も標準機能として持つ",
+            "認証・CAPTCHAバイパス・レート制限回避もFirecrawl側が吸収（マネージドサービス版の場合）"
+          ],
+          "analogy": "Playwrightは「自分で包丁を持って食材を切る厨房」、Firecrawlは「下処理済み食材を宅配してくれるミールキット」のようなもの。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — LLMパイプラインでの選択基準",
+          "body": "「LLMに渡すテキストを取得したいだけ」ならFirecrawl、「ブラウザ上でユーザー操作をシミュレートする必要がある」ならPlaywright。",
+          "bullets": [
+            "✅ Firecrawl優位：公開ページのテキスト収集・RAG用データ整備・大量URLの一括クロール・マークダウン変換が必要",
+            "✅ Playwright優位：ログイン必須ページ・フォーム送信・ページ内インタラクション・E2Eテストとの共用",
+            "コスト観点：Firecrawlはセルフホスト版（OSS）か有料APIかを選べる。小規模なら無料枠内で試せる",
+            "移行判断：現在のPlaywrightコードでHTMLのパース・クリーニングに時間を取られているなら、Firecrawlで工数を大幅削減できる"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "Firecrawl",
+          "Playwright"
+        ],
+        "rows": [
+          [
+            "主目的",
+            "LLM向けデータ取得・クロール",
+            "ブラウザ操作の自動化全般"
+          ],
+          [
+            "出力形式",
+            "Markdown / 構造化JSON（即LLM投入可）",
+            "HTML / DOM（自前でパースが必要）"
+          ],
+          [
+            "セットアップ",
+            "APIキーのみ（or Docker）",
+            "ブラウザドライバのインストール・管理"
+          ],
+          [
+            "ログイン認証",
+            "限定的（Cookieセット等）",
+            "フル対応（任意の操作フロー）"
+          ],
+          [
+            "大量クロール",
+            "再帰クロール・サイトマップ対応が標準",
+            "自前でキューイングを実装する必要あり"
+          ],
+          [
+            "コスト",
+            "OSS版あり / API版は従量課金",
+            "無料（OSS）"
+          ],
+          [
+            "向いているケース",
+            "RAG・ナレッジベース構築・定期データ収集",
+            "ブラウザ操作が複雑・E2Eテスト・認証必須"
+          ]
+        ]
+      },
+      "conclusion": "LLMへの入力テキスト収集が目的であれば、FirecrawlはPlaywrightより明らかに上位互換の開発体験を提供する。ただしログイン必須サイトや複雑なブラウザ操作が絡む場合はPlaywrightを維持し、公開ページの収集部分だけFirecrawlに切り出すハイブリッド構成が現実解となる。",
+      "date": "2026-03-14"
+    },
+    {
       "id": "hook-driven-vs-rule-dependent-journal",
       "title": "journal自律記録の信頼性設計",
       "subtitle": "Hook駆動 vs ルール依存",
