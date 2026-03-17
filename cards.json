@@ -56,6 +56,7 @@
   "cards": [
     {
       "id": "discord-command-types-vs-claude-cli",
+      "date": "2026-03-17",
       "title": "「コマンド」3種類の正体と使い分け",
       "subtitle": "Discordグローバル・ギルド・Claude CLIスキルは完全に別レイヤー",
       "tags": [
