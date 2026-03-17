@@ -55,6 +55,104 @@
   },
   "cards": [
     {
+      "id": "discord-bot-cli-session-resume",
+      "date": "2026-03-17",
+      "title": "Discord Bot × CLI セッション双方向Resume",
+      "subtitle": "bot_manager.sh resume で Discord セッションを CLI から再開する",
+      "tags": [
+        "discord-bot",
+        "claude-cli",
+        "session-management",
+        "shell-script"
+      ],
+      "context_summary": {
+        "context": "Discord Bot（Fish-bot）を使ってClaudeと会話しているとき、CLIからも同じ会話の続きを再開したい場面がある。",
+        "current": "Discord側には /resume コマンドがあり、CLIセッションをDiscordに引き継げる。しかしCLIの /resume はカレントディレクトリのセッションしか表示しないため、Discordのセッションが見えない。",
+        "confusion": "CLIの /resume に出てこないのはなぜか。session_store.json があるのにCLIから参照できないのはどういう仕組みか。",
+        "goal": "CLIからDiscordのセッション一覧を確認・選択して claude --resume で再開できるようにする。"
+      },
+      "terms": [
+        {
+          "word": "claude --resume",
+          "desc": "Claudeとの会話を途中から再開するオプション。図書館の栞のようなもので、同じsession_idを使えばDiscordでもCLIでも同じ会話の続きが読める。"
+        },
+        {
+          "word": "session_store.json",
+          "desc": "Discordチャンネルごとの現在のセッションIDと履歴を保存するJSONファイル。引き継ぎ台帳のようなもの。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — なぜCLI /resume にDiscordセッションが出ないのか",
+          "body": "CLIの /resume は現在いるディレクトリのプロジェクトに紐づいたセッションしか表示しない。Discordセッションは claude-discord-bot/ ディレクトリで実行されるため、別プロジェクト扱いになりCLIのカレントディレクトリからは見えない。",
+          "bullets": [
+            "CLIの /resume = 現在いるディレクトリのプロジェクト専用",
+            "Discordセッションは ~/.claude/projects/C--Users-kyoky-dev-projects-claude-discord-bot/ に格納",
+            "session_store.json には全チャンネルのセッションIDが記録されている"
+          ],
+          "analogy": "CLIの /resume は今いるフロアのキャビネットしか見えない。Discordセッションは別フロアにある。"
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — bot_manager.sh resume のしくみ",
+          "body": "session_store.json を読み込んでチャンネルごとのセッション履歴を一覧表示し、番号選択後に claude-discord-bot/ ディレクトリで claude --resume を起動する。",
+          "bullets": [
+            "uv run python でsession_store.json / session_name_cache.json をパース",
+            "● マーク = そのチャンネルの現在アクティブなセッション",
+            "番号選択 → cd claude-discord-bot && claude --resume <session_id> を実行"
+          ],
+          "analogy": "Discordは受付窓口、CLIは裏の作業部屋。bot_manager.sh resume はどの案件の続きをやるか選ぶ引き継ぎ台帳。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 使い方",
+          "body": "bot_manager.sh に resume サブコマンドを追加。番号直接指定にも対応。",
+          "bullets": [
+            "bash bot_manager.sh resume → 一覧表示後に番号入力",
+            "bash bot_manager.sh resume 3 → 番号直接指定で即起動",
+            "Git Bash から実行すること（cmdやPowerShellではパスがずれる）"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "CLI /resume",
+          "bot_manager.sh resume"
+        ],
+        "rows": [
+          [
+            "対象セッション",
+            "現在いるディレクトリのみ",
+            "Discord全チャンネル"
+          ],
+          [
+            "表示情報",
+            "セッション名・日時",
+            "チャンネル現在セッション(●)+履歴"
+          ],
+          [
+            "起動ディレクトリ",
+            "カレント",
+            "claude-discord-bot/ に自動cd"
+          ],
+          [
+            "番号直接指定",
+            "不可",
+            "可（resume 3）"
+          ],
+          [
+            "実装場所",
+            "Claude Code本体",
+            "bot_manager.sh（追記）"
+          ]
+        ]
+      },
+      "conclusion": "CLIでコードを書いていてそのままDiscordの会話を引き継ぎたいときは bot_manager.sh resume 一択。CLIの /resume はカレントプロジェクト専用のため、クロスディレクトリのセッション管理には別のヘルパーが必要。"
+    },
+    {
       "id": "discord-command-types-vs-claude-cli",
       "date": "2026-03-17",
       "title": "「コマンド」3種類の正体と使い分け",
@@ -124,15 +222,55 @@
         }
       ],
       "table": {
-        "headers": ["観点", "Discord グローバル", "Discord ギルド", "Claude CLIスキル"],
+        "headers": [
+          "観点",
+          "Discord グローバル",
+          "Discord ギルド",
+          "Claude CLIスキル"
+        ],
         "rows": [
-          ["動く場所", "Discord全体（全サーバー＋DM）", "特定サーバーのみ", "ローカルCLI上のみ"],
-          ["登録方法", "bot.tree.sync()", "tree.sync(guild=guild)", "SKILL.mdを配置"],
-          ["反映速度", "最大1時間", "即時", "即時"],
-          ["bot稼働必須", "必須", "必須", "不要"],
-          ["重複登録時", "上書き", "CommandAlreadyRegisteredエラー", "上書き"],
-          ["管理場所", "Discord API", "Discord API", "~/.claude/"],
-          ["使用例", "/restart /cd /journal", "テスト用コマンド", "/graphrec /bot status"]
+          [
+            "動く場所",
+            "Discord全体（全サーバー＋DM）",
+            "特定サーバーのみ",
+            "ローカルCLI上のみ"
+          ],
+          [
+            "登録方法",
+            "bot.tree.sync()",
+            "tree.sync(guild=guild)",
+            "SKILL.mdを配置"
+          ],
+          [
+            "反映速度",
+            "最大1時間",
+            "即時",
+            "即時"
+          ],
+          [
+            "bot稼働必須",
+            "必須",
+            "必須",
+            "不要"
+          ],
+          [
+            "重複登録時",
+            "上書き",
+            "CommandAlreadyRegisteredエラー",
+            "上書き"
+          ],
+          [
+            "管理場所",
+            "Discord API",
+            "Discord API",
+            "~/.claude/"
+          ],
+          [
+            "使用例",
+            "/restart /cd /journal",
+            "テスト用コマンド",
+            "/graphrec /bot status"
+          ]
         ]
       },
       "conclusion": "botのコマンドはDiscord側の話、CLIのスキルはClaude Code側の話。両者は完全に別レイヤー。混乱したらまず「どこで動かしたいか」を先に決める。Discordコマンドが出ない場合はAPI登録確認 → クライアント再起動の順で切り分ける。"
