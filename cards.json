@@ -89,53 +89,52 @@
       ],
       "sections": [
         {
-          "level": "概念",
-          "heading": "なぜ「コマンド」が3種類あるのか",
-          "body": "「コマンド」という言葉がDiscordのUI機能とClaude Codeのローカル設定の両方に使われているため混同しやすい。動く場所が違う別システムの話。"
+          "num": "①",
+          "title": "概念レベル — なぜ「コマンド」が3種類あるのか",
+          "body": "「コマンド」という言葉がDiscordのUI機能とClaude Codeのローカル設定の両方に使われているため混同しやすい。それぞれ動く場所・管理場所・反映速度がまったく異なる別システムの話。",
+          "bullets": [
+            "Discord グローバルコマンド：全サーバー＋DMで使えるスラッシュコマンド。bot.tree.sync()で登録",
+            "Discord ギルドコマンド：特定サーバー限定。即時反映されるが本番環境では通常グローバルに昇格させる",
+            "Claude CLIスキル：~/.claude/skills/ に置いたMarkdownファイル。Discordとは完全に無関係のローカル設定"
+          ],
+          "analogy": null
         },
         {
-          "level": "説明",
-          "heading": "3種類の違い",
-          "body": "Discordグローバル：全体登録・最大1時間で反映・bot.tree.sync()で更新。Discordギルド：サーバー限定・即時反映・同名のグローバルがあると衝突。Claude CLIスキル：ローカルMarkdown・即時有効・Discordと無関係。\n\n比喩：「グローバルは全国チェーンのメニュー（統一・遅い）、ギルドは店舗限定メニュー（即時・局所）、CLIスキルはClaudeへの手元メモ（Discordと無関係）」"
+          "num": "②",
+          "title": "説明レベル — 3種類の動く場所と仕組み",
+          "body": null,
+          "bullets": [
+            "【グローバル】bot.tree.sync() でDiscord APIに登録。キャッシュの関係で反映まで最大1時間かかる。全サーバーに配布される",
+            "【ギルド】bot.tree.sync(guild=guild) で特定サーバーに即時登録。グローバルと同名で登録するとCommandAlreadyRegisteredエラーになる",
+            "【CLIスキル】SKILL.mdをファイルに置くだけで即時有効。Discordのbot稼働は不要。開発者自身がCLIから呼び出す"
+          ],
+          "analogy": "グローバルは全国チェーンのメニュー（統一・遅い）、ギルドは店舗限定メニュー（即時・局所）、CLIスキルはシェフの手元メモ（厨房の内部ツール）"
         },
         {
-          "level": "実践",
-          "heading": "トラブル時の切り分け手順",
-          "body": "① コマンドが候補に出ない → Discord APIにcurlで登録確認 → クライアント再起動\n② CommandAlreadyRegistered → ギルドとグローバルの二重登録を疑う\n③ CLIで操作したい → ~/.claude/commands/ にMarkdown追加（Discordと無関係）"
+          "num": "③",
+          "title": "実践レベル — 「誰が使うか」で即判断",
+          "body": "「誰が実行するか」を先に決めることで迷わなくなる。",
+          "bullets": [
+            "Discord ユーザーに使わせたい → グローバルコマンド（テスト中はギルドで先行確認）",
+            "開発者自身がCLIから叩くツール → CLIスキル（/graphrec、/bot statusなど）",
+            "コマンドが候補に出ない → Discord APIにcurlで登録確認 → Discordクライアント再起動",
+            "CommandAlreadyRegistered → ギルドとグローバルの二重登録を疑う"
+          ],
+          "analogy": null
         }
       ],
-      "comparison": [
-        {
-          "観点": "動く場所",
-          "Discordグローバル": "Discord全体",
-          "Discordギルド": "特定サーバー",
-          "Claude CLIスキル": "ローカルCLI"
-        },
-        {
-          "観点": "反映速度",
-          "Discordグローバル": "最大1時間",
-          "Discordギルド": "即時",
-          "Claude CLIスキル": "即時"
-        },
-        {
-          "観点": "重複時",
-          "Discordグローバル": "—",
-          "Discordギルド": "エラーになる",
-          "Claude CLIスキル": "上書き"
-        },
-        {
-          "観点": "管理場所",
-          "Discordグローバル": "Discord API",
-          "Discordギルド": "Discord API",
-          "Claude CLIスキル": "~/.claude/"
-        },
-        {
-          "観点": "今回の例",
-          "Discordグローバル": "/restart /cd",
-          "Discordギルド": "（未使用）",
-          "Claude CLIスキル": "/bot status"
-        }
-      ],
+      "table": {
+        "headers": ["観点", "Discord グローバル", "Discord ギルド", "Claude CLIスキル"],
+        "rows": [
+          ["動く場所", "Discord全体（全サーバー＋DM）", "特定サーバーのみ", "ローカルCLI上のみ"],
+          ["登録方法", "bot.tree.sync()", "tree.sync(guild=guild)", "SKILL.mdを配置"],
+          ["反映速度", "最大1時間", "即時", "即時"],
+          ["bot稼働必須", "必須", "必須", "不要"],
+          ["重複登録時", "上書き", "CommandAlreadyRegisteredエラー", "上書き"],
+          ["管理場所", "Discord API", "Discord API", "~/.claude/"],
+          ["使用例", "/restart /cd /journal", "テスト用コマンド", "/graphrec /bot status"]
+        ]
+      },
       "conclusion": "botのコマンドはDiscord側の話、CLIのスキルはClaude Code側の話。両者は完全に別レイヤー。混乱したらまず「どこで動かしたいか」を先に決める。Discordコマンドが出ない場合はAPI登録確認 → クライアント再起動の順で切り分ける。"
     },
     {
