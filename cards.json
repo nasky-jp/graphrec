@@ -55,6 +55,221 @@
   },
   "cards": [
     {
+      "id": "discordpy-dmchannel-vs-guildchannel",
+      "title": "discord.py チャンネル型の罠",
+      "subtitle": "DMChannel vs GuildChannel — サイレント失敗の根本原因",
+      "tags": [
+        "discord.py",
+        "Python",
+        "Bot開発",
+        "型チェック",
+        "デバッグ"
+      ],
+      "context_summary": {
+        "context": "Discord BotのDMからのコマンドが全てサイレント失敗していた原因を調査していた。",
+        "current": "on_message内でchannel.nameを参照してALLOWED_CHANNELSチェックを行っていた。",
+        "confusion": "DMChannelにはGuildChannel固有の属性（.name / .typing()）がなく、例外が発生してもサイレントに握りつぶされていたため気づけなかった。",
+        "goal": "DMとサーバーチャンネル両方でコマンドが正常動作するよう修正したかった。"
+      },
+      "terms": [
+        {
+          "word": "DMChannel",
+          "desc": "ユーザーとBotの1対1のダイレクトメッセージチャンネル。サーバー（Guild）に属さないため、チャンネル名やギルド情報を持たない。「個人の携帯番号」のようなもので、会社の内線（GuildChannel）とは別の回線。"
+        },
+        {
+          "word": "GuildChannel",
+          "desc": "Discordサーバー（Guild）内に存在するチャンネル。.nameや.guild属性を持つ。「会社の部屋に付いた名札」のようなもので、部屋がなければ名札もない。"
+        },
+        {
+          "word": "サイレント失敗",
+          "desc": "例外が発生しても握りつぶされ、エラーも返答もなく処理が止まる状態。「郵便箱に入れたのに相手に届かず、誰も教えてくれない」状況に相当する。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — DMChannelはGuildChannelではない",
+          "body": "discord.pyのチャンネルは単一の型ではなく、DMChannel と GuildChannel という別クラスが存在し、持つ属性が根本的に異なる。",
+          "bullets": [
+            "DMChannel には .name / .guild / .typing() が存在しない",
+            "on_message はDMもサーバーも同じハンドラで受け取るため、型の違いが意識されにくい",
+            "属性アクセス時にAttributeErrorが発生するが、on_messageの例外ハンドリングが甘いとサイレント失敗になる"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "message.channel の型は isinstance(channel, discord.DMChannel) で判定可能",
+            "GuildChannel固有属性（.name等）にアクセスする前に型チェックが必要",
+            "サイレント失敗の原因：on_message内で例外をキャッチせずにreturnしていると、エラーログも返答もなく処理が終了する"
+          ],
+          "analogy": "GuildChannelを「会社の部署名が書かれた部屋」、DMChannelを「個人の携帯」と考えると、携帯に「どの部署ですか？」と聞いても答えられないのは当然。聞く前に「今どちらにいますか？」と確認するのが正しい順序。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — DM・サーバー両対応の修正パターン",
+          "body": "on_message冒頭でチャンネル型を判定し、DMとGuildChannelで処理を分岐させる。",
+          "bullets": [
+            "判断軸1：isinstance(message.channel, discord.DMChannel) でDMを先に弾くか、専用ハンドラに渡す",
+            "判断軸2：ALLOWED_CHANNELSチェックはGuildChannel確認後のみ実行する（DMは別ルートで許可/拒否を制御）",
+            "判断軸3：on_message全体をtry/exceptで囲みloggingでエラーを記録して、サイレント失敗を防ぐ",
+            "修正例：if isinstance(message.channel, discord.DMChannel): ... else: if message.channel.name in ALLOWED_CHANNELS: ..."
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "DMChannel",
+          "GuildChannel"
+        ],
+        "rows": [
+          [
+            "クラス",
+            "discord.DMChannel",
+            "discord.TextChannel等"
+          ],
+          [
+            ".name 属性",
+            "なし（AttributeError）",
+            "あり（チャンネル名）"
+          ],
+          [
+            ".guild 属性",
+            "なし",
+            "あり（サーバー情報）"
+          ],
+          [
+            ".typing()",
+            "なし",
+            "あり"
+          ],
+          [
+            "on_messageで受信",
+            "される",
+            "される"
+          ],
+          [
+            "ALLOWED_CHANNELSチェック",
+            "型確認後スキップ or 別制御",
+            "channel.nameで比較可能"
+          ]
+        ]
+      },
+      "conclusion": "DM対応が必要なBotでは、on_message冒頭でisinstance判定によるチャンネル型の分岐が必須。サイレント失敗を防ぐためにon_message全体をtry/exceptで包みloggingを仕込むことで、型起因のエラーを即座に検知できる。",
+      "date": "2026-03-18"
+    },
+    {
+      "id": "windows-subprocess-detach",
+      "title": "Windowsでのプロセス完全分離パターン",
+      "subtitle": "start_new_session vs DETACHED_PROCESS",
+      "tags": [
+        "Python",
+        "Windows",
+        "subprocess",
+        "プロセス管理",
+        "Discord Bot"
+      ],
+      "context_summary": {
+        "context": "Discord Botの /restart コマンドで、親プロセスが終了しても子プロセスが生き残るよう実装しようとしていた。",
+        "current": "start_new_session=True を使えば分離できると思っていた。",
+        "confusion": "start_new_session=True だけでは親プロセス死亡時に子が道連れになるケースがあり、bashパスやバックスラッシュ問題も重なって原因特定が困難だった。",
+        "goal": "botプロセス自身が終了した後に新しいbotプロセスを起動させる（自己再起動）を実現したかった。"
+      },
+      "terms": [
+        {
+          "word": "DETACHED_PROCESS",
+          "desc": "Windowsのフラグで、子プロセスを親のコンソールから切り離す。電車から降りた乗客のように、元の列車が走り去っても自分で目的地に向かえる状態にする。"
+        },
+        {
+          "word": "CREATE_NEW_PROCESS_GROUP",
+          "desc": "子プロセスを独立したプロセスグループとして生成するWindowsフラグ。Ctrl+Cなどのシグナルが親から伝搬しなくなる。家族から独立して別の戸籍を作るイメージ。"
+        },
+        {
+          "word": "Job Object",
+          "desc": "Windowsがプロセスをまとめて管理する仕組み。親が死ぬと配下のプロセスも道連れにする「会社倒産で社員全員解雇」のような連帯関係。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — Windowsの分離は2段階必要",
+          "body": "start_new_session=True はLinux向けの概念で、Windowsでは DETACHED_PROCESS + CREATE_NEW_PROCESS_GROUP のフラグ組み合わせが完全分離の正解。",
+          "bullets": [
+            "start_new_session=True はLinux（POSIX）では setsid() を呼んで完全分離できる",
+            "Windows では同フラグが Job Object の支配を断ち切れないケースがある",
+            "WindowsのJob Objectが有効な環境（タスクスケジューラ等）では親死亡=子道連れになる"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "DETACHED_PROCESS (0x00000008): 親のコンソールウィンドウから切り離す",
+            "CREATE_NEW_PROCESS_GROUP (0x00000200): 独立したシグナルグループに昇格させる",
+            "2つを OR 結合して creationflags に渡すことで Job Object の連帯死を回避できる",
+            "stdin/stdout/stderr を DEVNULL に向けないと親終了時にパイプ切断エラーが起きる"
+          ],
+          "analogy": "Job Objectは「親会社が倒産したら子会社も即廃業」という連鎖倒産契約。DETACHED_PROCESS+CREATE_NEW_PROCESS_GROUPは「法人格を独立させる」手続きで、親が消えても子会社が独自に生き残れるようにする。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — Bot自己再起動の正解コード",
+          "body": "subprocess.Popen に Windows専用フラグを組み合わせることで、親Bot終了後も新Botが起動し続ける自己再起動を実現できる。",
+          "bullets": [
+            "Windows判定: import sys; sys.platform == 'win32' で分岐し、Linux/Windowsで処理を切り替える",
+            "Windowsの正解: Popen([sys.executable, 'bot.py'], creationflags=DETACHED_PROCESS|CREATE_NEW_PROCESS_GROUP, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)",
+            "Linuxの正解: Popen([...], start_new_session=True, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)",
+            "bashパス問題: Windows で shell=True + bash経由の場合はパスにスラッシュを統一するか subprocess.STARTF_USESHOWWINDOW も併用する",
+            "再起動後の確認: bot.pid ファイルに新プロセスのPIDを書き込み、起動成功を検証する"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "start_new_session=True",
+          "DETACHED_PROCESS + CREATE_NEW_PROCESS_GROUP"
+        ],
+        "rows": [
+          [
+            "対応OS",
+            "Linux/macOS（POSIX）",
+            "Windows専用フラグ"
+          ],
+          [
+            "Job Object対策",
+            "Windowsでは不十分",
+            "Job Objectの連帯死を回避可能"
+          ],
+          [
+            "コンソール切り離し",
+            "Linux側では完全分離",
+            "Windowsコンソールから完全切り離し"
+          ],
+          [
+            "シグナル伝搬の遮断",
+            "Linux: setsid()で完全遮断",
+            "CREATE_NEW_PROCESS_GROUPで遮断"
+          ],
+          [
+            "Bot自己再起動への適合",
+            "Windowsでは不安定",
+            "Windowsで安定動作"
+          ]
+        ]
+      },
+      "conclusion": "Discord BotのWindows環境での自己再起動には start_new_session=True では不十分で、DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP のフラグ組み合わせが必須。OS判定で分岐するクロスプラットフォーム対応を実装することで、bot_manager.sh を介さない純Pythonの自己再起動も安全に実現できる。",
+      "date": "2026-03-18"
+    },
+    {
       "id": "discord-bot-cli-session-resume",
       "date": "2026-03-17",
       "title": "Discord Bot × CLI セッション双方向Resume",
