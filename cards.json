@@ -55,6 +55,207 @@
   },
   "cards": [
     {
+      "id": "tailwind-dynamic-class-purge",
+      "title": "TailwindCSS 動的クラスのpurge問題と回避パターン",
+      "subtitle": "開発OK・本番NG の落とし穴",
+      "tags": [
+        "TailwindCSS",
+        "React",
+        "ビルド最適化",
+        "アニメーション"
+      ],
+      "context_summary": {
+        "context": "Reactコンポーネントでサイドバーの開閉アニメーションを条件分岐でTailwindクラスを切り替えて実装しようとしていた。",
+        "current": "テンプレートリテラルでクラス名を動的生成すれば条件分岐スタイルが適用できると思っていた。",
+        "confusion": "開発環境では動作するがビルド後にスタイルが効かなくなる原因がわからなかった。",
+        "goal": "本番ビルドでもサイドバーのスライドアニメーションを正常に動作させたかった。"
+      },
+      "terms": [
+        {
+          "word": "コンテンツスキャン（purge）",
+          "desc": "Tailwindがビルド時にソースコードを静的解析し、使われていないCSSクラスを削除する仕組み。図書館の蔵書整理で「今年一度も借りられなかった本を処分する」のに似ていて、棚に並んでいるだけで実際に使われたか判定できないと、必要な本まで捨ててしまう。"
+        },
+        {
+          "word": "完全クラス名（complete class name）",
+          "desc": "Tailwindがスキャンで認識できる、分割・結合されていないクラス文字列。「translate-x-full」や「translate-x-0」のようにそのまま書かれた形のこと。バーコードが途中で切れていると読み取れないのと同じで、部分文字列の組み合わせはスキャナーが認識できない。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — なぜ本番だけ壊れるのか",
+          "body": "TailwindのコンテンツスキャンはCSSクラスを「文字列として静的に検索」するため、テンプレートリテラルで動的に組み立てられたクラス名は検出できず、本番ビルドで削除される。",
+          "bullets": [
+            "開発環境はCSSを全量読み込むため動作する（purgeされない）",
+            "本番ビルドはコンテンツスキャンで未検出のクラスを除去するためスタイルが消える",
+            "`translate-x-${isOpen ? 'full' : '0'}` のような分割文字列はスキャナーが認識できない"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "Tailwindのコンテンツスキャンは正規表現ベースの単純な文字列検索で動く",
+            "「完全クラス名」がソースコードのどこかに存在するかだけを判定する",
+            "変数や三項演算子の中でも、完全なクラス名文字列が書かれていれば検出される",
+            "`safelist` オプションでスキャン対象外に明示的に保護するクラスを指定することもできる"
+          ],
+          "analogy": "図書館司書が「今年借りられた本の記録を検索する」のに似ている。記録に「translate-x-full」という完全な書名が書いてあれば残すが、「translate-x-」＋「full」に分割された記録は別タイトルとみなして処分してしまう。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — サイドバーアニメーションを本番で動かす",
+          "body": "条件分岐でTailwindクラスを切り替えるときは、三項演算子の各分岐に完全クラス名を直書きする。",
+          "bullets": [
+            "【NG】`translate-x-${isOpen ? 'full' : '0'}` → 動的生成でスキャン対象外になる",
+            "【OK】`isOpen ? 'translate-x-0' : '-translate-x-full'` → 完全クラス名が両分岐に存在する",
+            "【OK・複数クラス管理に便利】clsxやcn()ヘルパーで完全クラス名を条件付きで組み合わせる",
+            "どうしても動的生成が必要なら tailwind.config.js の `safelist` に対象クラスを列挙して保護する",
+            "アニメーション用のクラスセット（translate-x-0, -translate-x-full）は必ず対でソースに書いておく"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "アプローチ",
+          "本番ビルドで動く",
+          "コードの見通し"
+        ],
+        "rows": [
+          [
+            "テンプレートリテラルで動的生成",
+            "✗（purgeされる）",
+            "◎ 短く書ける"
+          ],
+          [
+            "三項演算子で完全クラス名を直書き",
+            "✓",
+            "○ シンプル"
+          ],
+          [
+            "clsx / cn() ヘルパーで完全クラス名を渡す",
+            "✓",
+            "◎ 複数クラスの管理が楽"
+          ],
+          [
+            "safelist に登録",
+            "✓",
+            "△ 設定ファイルが肥大化しやすい"
+          ]
+        ]
+      },
+      "conclusion": "サイドバーのスライドアニメーションには「三項演算子で完全クラス名を直書き」または「clsx/cn()に完全クラス名を渡す」パターンが最適。safelist は動的に生成されるクラスが多い場合（CMSのカラー指定など）の最終手段として使う。",
+      "date": "2026-03-20"
+    },
+    {
+      "id": "supabase-grant-vs-rls",
+      "title": "Supabase権限モデル：GRANTとRLSの二層構造",
+      "subtitle": "GRANTが「入館許可」、RLSが「部屋ごとの鍵」",
+      "tags": [
+        "Supabase",
+        "PostgreSQL",
+        "RLS",
+        "権限管理",
+        "セキュリティ"
+      ],
+      "context_summary": {
+        "context": "G検定対策アプリでログイン時に学習進捗が消えるバグを調査していた。Supabaseのcard_progressテーブルへのアクセスで403エラーが発生。",
+        "current": "RLSポリシーを設定すれば権限管理は完結すると思っていた。",
+        "confusion": "RLSポリシーを何度修正しても403エラーが解消せず、原因特定に長時間を要した。",
+        "goal": "認証済みユーザーがcard_progressテーブルのCRUD操作を正常に実行できるようにしたかった。"
+      },
+      "terms": [
+        {
+          "word": "GRANT",
+          "desc": "PostgreSQLでロールにテーブル操作の権限を付与するSQL命令。建物への「入館証」にあたり、これがないと中に入ることすら拒否される。"
+        },
+        {
+          "word": "RLSポリシー（Row Level Security）",
+          "desc": "テーブルの行レベルで「誰がどの行を読み書きできるか」を制御する仕組み。入館後に「この部屋はあなたの荷物だから入れる」と判断する棚番号管理係のようなもの。"
+        },
+        {
+          "word": "anon / authenticated ロール",
+          "desc": "Supabaseが自動生成するPostgreSQLロール。anonは未ログインユーザー、authenticatedはJWT認証済みユーザーを表す。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — GRANTとRLSは別レイヤーで直列に評価される",
+          "body": "GRANTはテーブルへの「操作種別の許可」、RLSは「どの行にアクセスできるか」の判定であり、両方を通過しないとアクセスできない。",
+          "bullets": [
+            "GRANT が通らないと RLS ポリシーの評価すら行われず即403",
+            "RLS が有効でポリシーが0件の場合も全行が拒否される（暗黙のDENY）",
+            "つまり「GRANTで扉を開け、RLSで行を絞る」という二段階"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "GRANT SELECT ON card_progress TO authenticated; — authenticatedロールにSELECT権を付与",
+            "RLS有効化: ALTER TABLE card_progress ENABLE ROW LEVEL SECURITY;",
+            "ポリシー例: CREATE POLICY user_own_rows ON card_progress FOR ALL TO authenticated USING (user_id = auth.uid());",
+            "Supabaseダッシュボード経由でRLSを設定してもGRANTが未設定のままなら403は解消しない"
+          ],
+          "analogy": "ビルへの入館証（GRANT）を持っていないと守衛に止められる。入館証があっても、部屋の鍵（RLSポリシー）が合わなければ入れない。両方必要。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 403エラー調査の優先順序",
+          "body": "403が出たらRLSより先にGRANTを疑う。基礎レイヤー（GRANT→RLS）の順に確認すると最短で原因を特定できる。",
+          "bullets": [
+            "Step1: GRANT確認 — SELECT grantee, privilege_type FROM information_schema.role_table_grants WHERE table_name='card_progress';",
+            "Step2: RLS有効化確認 — SELECT relrowsecurity FROM pg_class WHERE relname='card_progress';",
+            "Step3: ポリシー一覧確認 — SELECT * FROM pg_policies WHERE tablename='card_progress';",
+            "authenticatedロールへのGRANTが抜けていることが最多原因 — まずここを確認する"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "GRANT",
+          "RLSポリシー"
+        ],
+        "rows": [
+          [
+            "制御の単位",
+            "テーブル全体への操作種別（SELECT/INSERT等）",
+            "テーブル内の行（どの行か）"
+          ],
+          [
+            "設定場所",
+            "PostgreSQL権限システム",
+            "テーブルに紐づくポリシー定義"
+          ],
+          [
+            "未設定時の挙動",
+            "操作を全拒否（403）",
+            "RLS有効時は全行を拒否（暗黙DENY）"
+          ],
+          [
+            "評価順序",
+            "先に評価される（1層目）",
+            "GRANT通過後に評価（2層目）"
+          ],
+          [
+            "Supabase UIでの操作",
+            "Table Editor の Privileges タブ",
+            "Authentication → Policies"
+          ]
+        ]
+      },
+      "conclusion": "card_progressへの403エラーは「GRANTの欠落」と「RLSポリシーの欠落」のどちらか、または両方が原因である。RLSだけを修正しても解決しないケースはGRANT未設定が根本原因であり、基礎レイヤー（GRANT→RLS）の順に確認する習慣をつけることで同種バグの調査時間を大幅に削減できる。",
+      "date": "2026-03-20"
+    },
+    {
       "id": "discordpy-dmchannel-vs-guildchannel",
       "title": "discord.py チャンネル型の罠",
       "subtitle": "DMChannel vs GuildChannel — サイレント失敗の根本原因",
