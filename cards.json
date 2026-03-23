@@ -55,6 +55,147 @@
   },
   "cards": [
     {
+      "id": "claude-code-limit-auto-resume",
+      "title": "Claude Code limit 自動resume設計パターン",
+      "subtitle": "StopFailureフック × schtasks による完全自動フロー",
+      "tags": [
+        "ClaudeCode",
+        "自動化",
+        "フック設計",
+        "Windows",
+        "セッション管理"
+      ],
+      "context_summary": {
+        "context": "Claude CodeがusageリミットでセッションがStopした際に、リセット時刻に自動で作業を再開する仕組みを実装していた。",
+        "current": "StopFailureフックでlimit到達を検知し、schtasksでリセット時刻にresumeを予約する完全自動フローを実現した。",
+        "confusion": "最初は「limitで止まったか判別する手段がない」と誤って即座に諦めており、StopFailureフックの存在を知らなかった。",
+        "goal": "limitリセット後に人手不要で自動的にセッションを再開してDiscordに通知したかった。"
+      },
+      "terms": [
+        {
+          "word": "StopFailureフック",
+          "desc": "Claude Codeがエラーや制限で異常停止したときだけ発火するフック。通常終了では動かない「非常ベル」のようなもの。"
+        },
+        {
+          "word": "schtasks",
+          "desc": "Windowsのタスクスケジューラをコマンドラインで操作するツール。「〇時になったらこのコマンドを実行して」と予約できる目覚まし時計。"
+        },
+        {
+          "word": "--resume",
+          "desc": "Claude Codeで前回のセッションを引き継いで再開するオプション。中断した会話の続きを同じ文脈で始められる「しおり機能」。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — limit停止を「検知→予約→再開」の3ステップで自動化する",
+          "body": "limitによる停止はStopFailureフックで確実に検知でき、そこからschtasksに再開タスクを登録すれば人手不要のループが完成する。",
+          "bullets": [
+            "通常のStopフックはlimit停止では発火しない — StopFailureフックが唯一の検知点",
+            "フック内でセッションIDとリセット時刻をファイルに保存し、schtasksで--resumeを予約する",
+            "再開後にDiscord通知を送ることで、完全に非同期・無人の自動フローが実現する"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ：フックがトリガー、schtasksが時限装置",
+          "body": null,
+          "bullets": [
+            "StopFailureフックのstop_reason='limit'をJSON parseして判別する",
+            "フック内でschtasks /create を実行しリセット時刻（例: 翌05:00）にresumeコマンドを登録",
+            "schtasksが起動するスクリプトの中でclaude --resumeを呼び出し、完了後にDiscord Webhookへ通知"
+          ],
+          "analogy": "録画予約と同じ構造。「番組が途中で止まったら（StopFailure）、放送再開時刻に録画を予約し直す（schtasks）」イメージ。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 実装時の判断軸と落とし穴",
+          "body": "StopFailureフックの存在を知っているかどうかが、自動化できるかどうかの分岐点。まずフックの種類を確認してから設計する。",
+          "bullets": [
+            "【判断軸1】limitとcrashを区別したいか → stop_reasonフィールドをJSONで受け取って分岐する",
+            "【判断軸2】リセット時刻が固定か動的か → 固定なら即schtasks登録、動的ならAPIでリセット時刻を取得してから登録",
+            "【落とし穴】CLAUDE_SESSION_IDをそのまま渡すと親セッションに混入する → 環境変数を除去してから--resumeを呼ぶ",
+            "【通知】Discord通知はresumeスクリプトの末尾でWebhook POSTするだけで完結する"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": null,
+      "conclusion": "limit到達を「詰まり」ではなく「予約トリガー」として扱うことで、人手不要の完全自動フローが成立する。StopFailureフックとschtasksの組み合わせはWindowsのClaude Code自動化において最もシンプルかつ確実なパターンであり、セッションIDの汚染だけ注意すれば即本番適用できる。",
+      "date": "2026-03-23"
+    },
+    {
+      "id": "claude-cli-detached-safe-call",
+      "title": "デタッチプロセスからClaude CLIを安全に呼び出す",
+      "subtitle": "セッションID汚染を防ぐ独立呼び出しパターン",
+      "tags": [
+        "Claude CLI",
+        "detachedプロセス",
+        "StopHook",
+        "環境変数",
+        "stdin"
+      ],
+      "context_summary": {
+        "context": "セッション終了フック（StopHook）内でClaude CLIを呼び出してジャーナルを自動記録する仕組みを実装していた。",
+        "current": "detachedプロセスからclaude -pを呼ぶとCLAUDE_SESSION_IDを引き継いで親セッションに割り込む問題を解決した。",
+        "confusion": "detachedプロセスで起動したworkerが親のClaude Codeセッションに接続してしまい、無関係な返答が会話に出現した原因がわからなかった。",
+        "goal": "フック・バックグラウンドプロセスからClaude CLIを完全に独立した新セッションとして呼び出したかった。"
+      },
+      "terms": [
+        {
+          "word": "CLAUDE_SESSION_ID",
+          "desc": "Claude CLIが「どの会話の続きか」を識別する環境変数。喫茶店の整理番号のようなもので、この番号を持ったまま別の席に座ると、そのテーブルの会話に割り込んでしまう。"
+        },
+        {
+          "word": "--no-session-persistence",
+          "desc": "Claude CLIに「過去のセッションを引き継がず、完全に新しい会話として扱え」と指示するフラグ。ゲストモードで起動するようなイメージ。"
+        },
+        {
+          "word": "stdin渡し",
+          "desc": "プロセスへのプロンプト入力をシェル引数ではなく標準入力（パイプ）経由で渡す方法。シェルによるエスケープ破損を回避できる郵便ポスト投函方式。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 何が起きていたか",
+          "body": "detachedプロセスがCLAUDE_SESSION_IDを環境変数として引き継ぎ、親のClaude Codeセッションに「続き」として接続していた。",
+          "bullets": [
+            "Nodeのspawnでprocess.envをそのまま渡すとCLAUDE_SESSION_IDが混入する",
+            "claude -pはセッションIDがあれば自動的にその会話に参加しようとする",
+            "結果：workerの返答が親の会話画面に出現する"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "env汚染の除去: CLAUDE_SESSION_IDとCLAUDE_CONVERSATION_IDをdeleteしてからspawn",
+            "--no-session-persistenceフラグで新セッション強制",
+            "プロンプトはシェル引数でなくstdin（input:オプション）で渡してエスケープ破損を防ぐ"
+          ],
+          "analogy": "会社の内線番号を知ったまま外から電話するようなもの。番号（SESSION_ID）を知っていれば社内会議に直接割り込める。番号を消してから外線で発信すれば完全に独立した通話になる。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 安全な呼び出しパターン",
+          "body": "フック・バックグラウンドワーカーからclaude -pを呼ぶときは必ず3点セットを守る。",
+          "bullets": [
+            "const env = {...process.env}; delete env.CLAUDE_SESSION_ID; delete env.CLAUDE_CONVERSATION_ID;",
+            "spawnSyncの引数: ['claude', ['-p', '--input-format', 'text', '--output-format', 'text', '--no-session-persistence'], { input: prompt, env }]",
+            "shell:trueを避けるか、少なくともプロンプトをstdinで渡してシェルエスケープ破損を防ぐ"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": null,
+      "conclusion": "StopHookなどフックからClaude CLIを呼ぶ場合、セッション変数の除去・--no-session-persistence・stdin渡しの3点セットがデファクトパターン。これを怠ると親セッション汚染が無音で発生するため、バックグラウンドclaude -p呼び出しには必ずこのテンプレートを適用する。",
+      "date": "2026-03-23"
+    },
+    {
       "id": "session-start-hook-context-persistence",
       "title": "Claude Code SessionStartフックによるセッション間コンテキスト永続化",
       "subtitle": "手動ロード → 自動推定への移行",
