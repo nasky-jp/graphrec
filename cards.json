@@ -12,7 +12,19 @@
       "Firecrawl",
       "MCP",
       "Playwright",
-      "discord.py"
+      "discord.py",
+      "Claude CLI",
+      "ClaudeCode",
+      "PostgreSQL",
+      "Python",
+      "React",
+      "Supabase",
+      "TailwindCSS",
+      "Windows",
+      "claude-cli",
+      "ツール・環境",
+      "ツール選定",
+      "ブラウザ自動化"
     ],
     "開発・設計": [
       "フロントエンド",
@@ -26,7 +38,22 @@
       "graphrec",
       "トリガー設計",
       "信頼性設計",
-      "設計判断"
+      "設計判断",
+      "Bot開発",
+      "RLS",
+      "StopHook",
+      "detachedプロセス",
+      "discord-bot",
+      "hooks",
+      "shell-script",
+      "stdin",
+      "subprocess",
+      "アニメーション",
+      "セキュリティ",
+      "フック",
+      "フック設計",
+      "設計パターン",
+      "型チェック"
     ],
     "効率化・管理": [
       "開発効率化",
@@ -36,7 +63,15 @@
       "journal",
       "ジャーナリング",
       "自動化",
-      "品質評価"
+      "品質評価",
+      "session-management",
+      "コンテキスト管理",
+      "セッション管理",
+      "トークン最適化",
+      "ビルド最適化",
+      "プロセス管理",
+      "権限管理",
+      "環境変数"
     ],
     "サービス・基盤": [
       "Vercel",
