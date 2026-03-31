@@ -90,6 +90,138 @@
   },
   "cards": [
     {
+      "id": "discord-thread-project-id-resolution",
+      "title": "Discordスレッド文脈からプロジェクトIDを自動解決するパターン",
+      "subtitle": "2段ルックアップでproject_id省略を実現する",
+      "tags": [
+        "Discord",
+        "コンテキスト解決",
+        "スラッシュコマンド",
+        "プロジェクト管理"
+      ],
+      "context_summary": {
+        "context": "PJカードのDiscordスレッド内でコマンドを打つたびにproject_idを指定するのが冗長だった。",
+        "current": "スラッシュコマンドは毎回project_idを明示的に引数として要求していた。",
+        "confusion": "スレッドIDとプロジェクトIDのマッピングをどこに持ち、どう引くかが決まっていなかった。",
+        "goal": "スレッドID→チャンネルIDのルックアップで対応PJを2段解決し、スレッド内ではproject_id省略を可能にする。"
+      },
+      "terms": [
+        {
+          "word": "2段ルックアップ",
+          "desc": "まず「スレッドID→チャンネルID」を引き、次に「チャンネルID→プロジェクトID」を引く2回引きの解決手順。住所録で「ニックネーム→本名→電話番号」と2冊の台帳をたどるイメージ。"
+        },
+        {
+          "word": "暗黙的コンテキスト",
+          "desc": "ユーザーが明示しなくても、実行場所（スレッド）から自動で推測される情報のこと。「いつもの店で」と言うだけで注文が通る常連客の状態に近い。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 実行場所がコンテキストになる",
+          "body": "「どのスレッドで打ったか」という位置情報をproject_idの代わりに使う。",
+          "bullets": [
+            "スレッド自体がプロジェクトと1対1に紐づいている前提を活かす",
+            "暗黙的コンテキストとして位置情報を引数の代わりに解決する"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — 2段ルックアップのしくみ",
+          "body": null,
+          "bullets": [
+            "Step1: ctx.channel.id でスレッドIDを取得 → 親チャンネルID（thread.parent_id）へ変換",
+            "Step2: 親チャンネルIDをキーに channel_project_map（JSONまたはDBテーブル）からproject_idを取得",
+            "引数に project_id が明示されていればそちらを優先し、省略時のみ2段ルックアップを実行"
+          ],
+          "analogy": "宅配便の「建物名→部屋番号→受取人」と同じで、スレッドという玄関から2回たどって正しいプロジェクトに届ける。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 使い所と実装判断",
+          "body": "スラッシュコマンドのproject_idを Optional にし、Noneのときだけ2段ルックアップを呼ぶガード節を入れる。",
+          "bullets": [
+            "マッピング置き場の選択: スレッド数が少ない → JSONファイルで十分、多い・動的に増える → DBテーブル推奨",
+            "解決失敗時のフォールバック: ルックアップがNoneを返したら「project_idを指定してください」とユーザーにエラー返却して終了",
+            "スレッド外（DMやサーバー直投稿）では parent_id がNullになるため、2段ルックアップを走らせずに即エラーとする分岐を忘れずに入れる"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": null,
+      "conclusion": "スレッドとプロジェクトが1対1で対応するDiscord運用では、2段ルックアップによる暗黙的コンテキスト解決がコマンド入力コストを大幅に削減する。マッピングの置き場とフォールバック設計さえ決めれば即導入できるシンプルなパターン。",
+      "date": "2026-03-31"
+    },
+    {
+      "id": "subagent-hook-visibility",
+      "title": "Agentフック可視化パターン",
+      "subtitle": "SubagentStart / SubagentStop でログを取る",
+      "tags": [
+        "Claude Code",
+        "hooks",
+        "エージェント",
+        "可視化",
+        "settings.json"
+      ],
+      "context_summary": {
+        "context": "CLAUDE.mdにエージェント呼び出しルールを記述しているが、実際に呼ばれているか確認できない問題があった。",
+        "current": "エージェントの自動呼び出しはClaude判断に依存し、強制トリガーの仕組みはない。",
+        "confusion": "エージェントが意図通り呼ばれているかどうかの可視性がなく、動作確認ができていなかった。",
+        "goal": "settings.jsonのSubagentStart/Stopフックでエージェント呼び出しをログに記録し、可視化する。"
+      },
+      "terms": [
+        {
+          "word": "SubagentStart / SubagentStop フック",
+          "desc": "Claudeがサブエージェントを起動・終了した瞬間に自動実行されるシェルスクリプト。工場のラインに入退場センサーを付けるイメージで、エージェントが通過するたびに記録が残る。"
+        },
+        {
+          "word": "PostToolUse フック",
+          "desc": "ツール実行が完了した直後に呼ばれるフック。道具を棚に戻した瞬間に在庫台帳へ記録するようなタイミングで動く。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — エージェント呼び出しは「宣言」ではなく「確率」",
+          "body": "CLAUDE.mdに書いたルールはClaudeへの指示であり、必ず呼ばれる保証はない。動作確認には外部の観測手段が必要。",
+          "bullets": [
+            "CLAUDE.mdは「呼び出してほしい条件」を記述するが強制力はない",
+            "SubagentStart/Stopフックを使うと、実際に呼ばれたエージェントが外部ログに残る",
+            "ログがなければ「呼ばれたつもり」と「呼ばれていない」を区別できない"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — SubagentStart/Stop フックの仕組み",
+          "body": null,
+          "bullets": [
+            "settings.json の hooks セクションに SubagentStart / SubagentStop を登録する",
+            "フックにはシェルコマンドを書ける。例: `echo \"$(date) START $SUBAGENT_TYPE\" >> ~/agent_calls.log`",
+            "PostToolUse フックは Tool ごとに設定でき、Agent ツールにも適用できる",
+            "stdin 経由で JSON が渡されるため、jq でエージェント名・引数を抽出できる"
+          ],
+          "analogy": "工場の入退場ゲートにセンサーを付けるイメージ。誰がいつ通ったかが自動でタイムスタンプ付きで台帳に残る。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — 最小構成でログを始める",
+          "body": "まず SubagentStart だけ登録して tail -f でリアルタイム監視するのが最速の確認方法。",
+          "bullets": [
+            "settings.json の hooks に `{\"event\": \"SubagentStart\", \"command\": \"echo \\\"$(date +%H:%M:%S) AGENT_START: $SUBAGENT_TYPE\\\" >> ~/agent_calls.log\"}` を追加",
+            "別ターミナルで `tail -f ~/agent_calls.log` を開いておき、会話中に呼ばれるエージェントをリアルタイム観測する",
+            "ログに出ない = 呼ばれていない → CLAUDE.mdの条件記述を見直す判断基準になる",
+            "PostToolUse フックで Agent ツールにフィルタすれば、エージェント名と引数を JSON で取得できる（さらに詳細な可視化が可能）"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": null,
+      "conclusion": "SubagentStart/Stopフックは設定2〜3行で導入でき、CLAUDE.mdのルールが機能しているかを即座に検証できる。エージェント駆動の開発フローでは「宣言したルールが動いているか」の観測基盤として最初に入れるべき仕組み。",
+      "date": "2026-03-31"
+    },
+    {
       "id": "claude-code-limit-auto-resume",
       "title": "Claude Code limit 自動resume設計パターン",
       "subtitle": "StopFailureフック × schtasks による完全自動フロー",
