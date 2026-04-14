@@ -107,6 +107,109 @@
   },
   "cards": [
     {
+      "id": "rate-limit-info-vs-statusline-cache",
+      "title": "rate_limit_info と statusline キャッシュの使い分け",
+      "subtitle": "--verbose の独自フォーマット vs 標準 JSON の違い",
+      "tags": [
+        "Claude CLI",
+        "レートリミット",
+        "Discord Bot",
+        "Agent SDK"
+      ],
+      "context_summary": {
+        "context": "Discord BotのレートリミットをリアルタイムでDiscordに表示する機能を改善しようとしていた。",
+        "current": "--verboseフラグで取得できるrate_limit_infoの存在は知っていたが、そのフォーマット仕様が不明だった。",
+        "confusion": "--verboseのrate_limit_infoがAgent SDK経由の独自フォーマット（utilization/resetsAt）であり、statuslineに渡る標準JSON（used_percentageベース）とは別構造であることに気づかず混乱した。",
+        "goal": "レートリミットの使用率をBotの応答メッセージに含めて表示したかった。"
+      },
+      "terms": [
+        {
+          "word": "rate_limit_info",
+          "desc": "--verbose 付きで claude CLI を実行したときにステータス行に出力されるレートリミット情報オブジェクト。お店の「本日の混雑状況ボード」のようなもので、今どれだけ枠を使っているかをリアルタイムで示す。"
+        },
+        {
+          "word": "utilization",
+          "desc": "Agent SDK が出力する rate_limit_info 内のフィールド。0〜1 の小数で使用率を表す独自形式。used_percentage（0〜100の整数）とは単位が異なるため混同しやすい。"
+        },
+        {
+          "word": "statusline キャッシュ",
+          "desc": "claude CLI が --output-format stream-json などで出力する statusline イベントに含まれる標準 JSON。used_percentage フィールドを持ち、Bot がパースして表示に使う「共通の読み取りメーター」。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 2つのレートリミット情報は別物",
+          "body": "--verbose の rate_limit_info（Agent SDK 独自）と statusline キャッシュ（標準 JSON）は構造が異なり、同じ値として扱うとバグの原因になる。",
+          "bullets": [
+            "rate_limit_info は utilization（0〜1）と resetsAt を持つ Agent SDK 固有フォーマット",
+            "statusline キャッシュは used_percentage（0〜100）を持つ CLI 標準フォーマット",
+            "どちらも「残り枠」を示すが、フィールド名・スケール・出力タイミングがすべて異なる"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — しくみ",
+          "body": null,
+          "bullets": [
+            "--verbose 有効時: claude CLI → Agent SDK 経由 → rate_limit_info { utilization: 0.72, resetsAt: '...' } を stderr/statusline に出力",
+            "stream-json モード時: statusline イベント内に { used_percentage: 72 } を含む標準 JSON が stdout に流れる",
+            "utilization は 0.72 = 72%、used_percentage は整数の 72 — 同じ意味でもフィールド名と型が違う"
+          ],
+          "analogy": "同じ「タンクの残量」を、片方は「0.72 満杯」と言い、もう片方は「72% 使用済み」と言う計器が並んでいるイメージ。数値の意味は同じでも読み取り方を間違えると全く別の値になる。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — Bot 表示への組み込み判断基準",
+          "body": "Discord Bot の応答メッセージに使用率を埋め込むなら statusline キャッシュの used_percentage を使うのが最もシンプル。",
+          "bullets": [
+            "stream-json で実行し、type=='statusline' のイベントから used_percentage を取得 → そのまま % 表示できる",
+            "--verbose の rate_limit_info を使う場合は utilization × 100 に変換してから表示する",
+            "resetsAt はリセット時刻（ISO 8601）なので「あと N 分でリセット」表示にも流用できる",
+            "どちらのフォーマットか不明なときは: フィールドに 'utilization' があれば Agent SDK 系、'used_percentage' があれば statusline 系と判定する"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "観点",
+          "rate_limit_info（--verbose）",
+          "statusline キャッシュ"
+        ],
+        "rows": [
+          [
+            "出力元",
+            "Agent SDK 経由",
+            "CLI 標準ストリーム"
+          ],
+          [
+            "使用率フィールド",
+            "utilization（0〜1）",
+            "used_percentage（0〜100）"
+          ],
+          [
+            "リセット時刻",
+            "resetsAt（ISO 8601）",
+            "なし（または別フィールド）"
+          ],
+          [
+            "取得方法",
+            "--verbose フラグ",
+            "--output-format stream-json"
+          ],
+          [
+            "Bot 実装コスト",
+            "変換処理が必要",
+            "そのまま % 表示できる"
+          ]
+        ]
+      },
+      "conclusion": "Discord Bot でレートリミット使用率をメッセージに表示したいなら、statusline キャッシュの used_percentage が変換不要で最短。--verbose の rate_limit_info を使う場合は utilization × 100 の変換を忘れずに実装する。",
+      "date": "2026-04-14"
+    },
+    {
       "id": "mock-startup-pattern",
       "title": "外部サービス依存プロジェクトのモック起動パターン",
       "subtitle": "Supabase・Stripe未設定でもUIを動かす",
