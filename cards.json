@@ -109,6 +109,107 @@
   },
   "cards": [
     {
+      "id": "claude-api-context-window-measurement",
+      "title": "Claude APIコンテキストウィンドウの正しい計測法",
+      "subtitle": "cache_read_input_tokens ≠ コンテキスト量",
+      "tags": [
+        "Claude API",
+        "コンテキストウィンドウ",
+        "プロンプトキャッシュ",
+        "Discord Bot"
+      ],
+      "context_summary": {
+        "context": "Discord BotでClaudeのセッションキャッシュが頻繁にリセットされる問題を調査していた。",
+        "current": "cache_read_input_tokensのみでコンテキスト肥大化を判断していたが、それが誤りだと気づいた段階。",
+        "confusion": "cache_read_input_tokens > 200,000 をリセット判断基準にしていたが、これはキャッシュヒット数であってコンテキスト量ではないことを見落としていた。",
+        "goal": "不要なセッションリセットを減らし、実際のコンテキスト使用量に基づいた適切なリセット判断を行いたかった。"
+      },
+      "terms": [
+        {
+          "word": "input_tokens",
+          "desc": "今回のリクエストでClaudeが実際に「読んだ」トークン数。図書館で今日借りた本のページ数に相当し、キャッシュ済みかどうかに関わらずコンテキストとして消費される量を示す。"
+        },
+        {
+          "word": "cache_read_input_tokens",
+          "desc": "プロンプトキャッシュから再利用されたトークン数。「以前読んだ本をもう一度借りた回数」であり、コンテキストウィンドウの残量とは無関係。大きくても窓が埋まっているとは限らない。"
+        },
+        {
+          "word": "cache_creation_input_tokens",
+          "desc": "今回新たにキャッシュに書き込まれたトークン数。「初めて図書館に登録した本のページ数」であり、input_tokensに加算してコンテキスト総量を把握するために使う。"
+        }
+      ],
+      "sections": [
+        {
+          "num": "①",
+          "title": "概念レベル — 「キャッシュヒット数」と「コンテキスト量」は別物",
+          "body": "cache_read_input_tokens はコスト節約の指標であり、コンテキストウィンドウの残量を示す指標ではない。",
+          "bullets": [
+            "コンテキスト量 = input_tokens + cache_creation_input_tokens で計算する",
+            "cache_read_input_tokens が大きくても、input_tokens が小さければウィンドウはほぼ空き",
+            "200,000トークンのキャッシュヒットは「安く読めた」という情報であり「窓が埋まった」ではない"
+          ],
+          "analogy": null
+        },
+        {
+          "num": "②",
+          "title": "説明レベル — 各フィールドの役割",
+          "body": null,
+          "bullets": [
+            "input_tokens: キャッシュ未ヒット分として実際に処理されたトークン数（コンテキストに直接加算）",
+            "cache_read_input_tokens: キャッシュから再利用されたトークン数（課金は安くなるがコンテキスト枠は消費する）",
+            "cache_creation_input_tokens: 今回新規にキャッシュ書き込みしたトークン数（コンテキストに加算）",
+            "実コンテキスト使用量 = input_tokens + cache_creation_input_tokens（cache_read分は既にinput_tokensに含まれていないことに注意）",
+            "output_tokens は次ターンのinputに加わるため、累積時は考慮が必要"
+          ],
+          "analogy": "図書館の「貸出冊数（input_tokens）」と「延長貸出回数（cache_read_input_tokens）」を混同するようなもの。どちらも本棚を占有しているが、意味は全く異なる。"
+        },
+        {
+          "num": "③",
+          "title": "実践レベル — セッションリセット判断の正しい実装",
+          "body": "APIレスポンスのusageオブジェクトから input_tokens + cache_creation_input_tokens の合計でリセット閾値を判定する。",
+          "bullets": [
+            "判断軸: (usage.input_tokens + usage.cache_creation_input_tokens) > 閾値 でリセットを判定する",
+            "Claude 3系の上限は200,000トークン。安全マージンを見て150,000〜180,000を閾値にする",
+            "cache_read_input_tokens単独での判定は廃止する（誤検知の原因）",
+            "ログに input_tokens / cache_read_input_tokens / cache_creation_input_tokens を分けて記録し、デバッグを容易にする",
+            "セッション継続中はoutput_tokensも次回のinputに積み上がるため、長期会話では余裕を持った閾値設定が必要"
+          ],
+          "analogy": null
+        }
+      ],
+      "table": {
+        "headers": [
+          "フィールド",
+          "意味",
+          "リセット判定に使うか"
+        ],
+        "rows": [
+          [
+            "input_tokens",
+            "実際に処理したトークン数",
+            "✅ 使う（主指標）"
+          ],
+          [
+            "cache_read_input_tokens",
+            "キャッシュから再利用した数",
+            "❌ 使わない（コスト指標）"
+          ],
+          [
+            "cache_creation_input_tokens",
+            "新規キャッシュ書き込み数",
+            "✅ 使う（input_tokensに加算）"
+          ],
+          [
+            "output_tokens",
+            "今回の出力トークン数",
+            "⚠️ 長期セッションでは考慮"
+          ]
+        ]
+      },
+      "conclusion": "セッションリセットの誤発火を防ぐには、cache_read_input_tokensを捨て、input_tokens + cache_creation_input_tokens の合計を実コンテキスト量として判定する。この修正により、キャッシュ効率が高いセッションほど長く継続できるようになり、Bot体験の質が向上する。",
+      "date": "2026-05-01"
+    },
+    {
       "id": "rate-limit-info-vs-statusline-cache",
       "title": "rate_limit_info と statusline キャッシュの使い分け",
       "subtitle": "--verbose の独自フォーマット vs 標準 JSON の違い",
